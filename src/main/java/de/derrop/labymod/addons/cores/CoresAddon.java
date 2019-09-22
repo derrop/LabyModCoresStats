@@ -9,6 +9,8 @@ import de.derrop.labymod.addons.cores.listener.CommandListener;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
+import de.derrop.labymod.addons.cores.module.BestPlayerModule;
+import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.party.PartyDetector;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
@@ -16,10 +18,7 @@ import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.settings.elements.SettingsElement;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -62,8 +61,12 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(this.partyDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
+        this.getApi().registerModule(new BestPlayerModule(this));
+        this.getApi().registerModule(new WorstPlayerModule(this));
+
         this.getApi().getEventManager().registerOnQuit(serverData -> {
             this.partyDetector.handleLeaveParty();
+            this.statsParser.clearCachedStats();
             this.clanDetector.clearCache();
             this.onlinePlayers.clear();
         });
@@ -126,6 +129,20 @@ public class CoresAddon extends LabyModAddon {
             LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat eine Siegwahrscheinlichkeit von §e" + winRate + " %" +
                     " §8(Gespielt: §e" + playedGames + "§8; Gewonnen: §e" + wonGames + "§8)");
         }
+    }
+
+    public PlayerStatistics getBestPlayer() {
+        return this.statsParser.getCachedStats().values().stream()
+                .filter(stats -> stats.getStats().containsKey("rank"))
+                .min(Comparator.comparingDouble(value -> Integer.parseInt(value.getStats().get("rank"))))
+                .orElse(null);
+    }
+
+    public PlayerStatistics getWorstPlayer() {
+        return this.statsParser.getCachedStats().values().stream()
+                .filter(stats -> stats.getStats().containsKey("rank"))
+                .max(Comparator.comparingDouble(value -> Integer.parseInt(value.getStats().get("rank"))))
+                .orElse(null);
     }
 
     @Override

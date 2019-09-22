@@ -141,7 +141,7 @@ public class StatsParser {
     /**
      * Clears the read messages from the current session
      */
-    public void clearReadStats() {
+    public void clearCachedStats() {
         this.readStatistics.clear();
     }
 

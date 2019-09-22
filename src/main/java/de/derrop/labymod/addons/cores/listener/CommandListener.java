@@ -29,20 +29,10 @@ public class CommandListener implements MessageSendEvent {
         String commandLine = message.substring(1);
         String[] args = commandLine.split(" ");
         if (args[0].equalsIgnoreCase("bestStats")) {
-            this.displayStatistics(
-                    this.coresAddon.getStatsParser().getCachedStats().values().stream()
-                            .filter(stats -> stats.getStats().containsKey("rank"))
-                            .min(Comparator.comparingDouble(value -> Integer.parseInt(value.getStats().get("rank"))))
-                            .orElse(null)
-            );
+            this.displayStatistics(this.coresAddon.getBestPlayer());
             return true;
         } else if (args[0].equalsIgnoreCase("worstStats")) {
-            this.displayStatistics(
-                    this.coresAddon.getStatsParser().getCachedStats().values().stream()
-                            .filter(stats -> stats.getStats().containsKey("rank"))
-                            .max(Comparator.comparingDouble(value -> Integer.parseInt(value.getStats().get("rank"))))
-                            .orElse(null)
-            );
+            this.displayStatistics(this.coresAddon.getWorstPlayer());
             return true;
         }
         return false;
