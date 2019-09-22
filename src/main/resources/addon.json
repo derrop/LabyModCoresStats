@@ -1,0 +1,7 @@
+{
+  "uuid": "%uuid%",
+  "name": "CoresAddon",
+  "mainClass": "de.derrop.labymod.addons.cores.CoresAddon",
+  "author": "derrop",
+  "description": "This addon is a small web server which can show you the statistics of every online player in the current cores game and warn you, if a clan or a player with a rank <= 300 joins"
+}
