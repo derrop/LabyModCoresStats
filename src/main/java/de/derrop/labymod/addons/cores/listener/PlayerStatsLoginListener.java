@@ -32,7 +32,7 @@ public class PlayerStatsLoginListener implements MessageReceiveEvent {
             if (matcher.find()) { //player joined the match
                 String name = matcher.group(1);
 
-                if (name.equals(LabyModCore.getMinecraft().getPlayer().getName())) {
+                if (name.equals(LabyModCore.getMinecraft().getPlayer().getName())) { //todo check if this is a cores server (Gomme sends information like this for LabyMod's DiscordRPC)
                     for (GameProfile profile : this.coresAddon.getOnlinePlayers().values()) {
                         this.requestPlayerStatsAndWarn(profile.getName());
                     }
