@@ -3,11 +3,14 @@ package de.derrop.labymod.addons.cores.statistics;
  * Created by derrop on 22.09.2019
  */
 
-import net.minecraft.client.Minecraft;
+import net.labymod.core.LabyModCore;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,7 +35,26 @@ public class StatsParser {
     private Map<String, PlayerStatistics> readStatistics = new HashMap<>();
     private Map<String, CompletableFuture<PlayerStatistics>> statsRequests = new HashMap<>();
 
+    private BlockingQueue<String> requestQueue = new LinkedBlockingQueue<>();
+
     private PlayerStatistics readingStats;
+
+    public StatsParser(ExecutorService executorService) {
+        executorService.execute(() -> {
+            while (!Thread.interrupted()) {
+                try {
+                    if (LabyModCore.getMinecraft().getPlayer() != null) {
+                        LabyModCore.getMinecraft().getPlayer().sendChatMessage(this.requestQueue.take());
+                        Thread.sleep(300);
+                    } else { //not connected to any server
+                        Thread.sleep(5000);
+                    }
+                } catch (InterruptedException exception) {
+                    exception.printStackTrace();
+                }
+            }
+        });//, "StatsQueue-Executor").start();
+    }
 
     private String getStatsPLayerName(String msg) {
         Matcher matcher = BEGIN_STATS_PATTERN.matcher(msg);
@@ -138,9 +160,11 @@ public class StatsParser {
      * @return the future with the {@link PlayerStatistics} object
      */
     public CompletableFuture<PlayerStatistics> requestStats(String name) {
+        if (this.statsRequests.containsKey(name))
+            return this.statsRequests.get(name);
         CompletableFuture<PlayerStatistics> future = new CompletableFuture<>();
         this.statsRequests.put(name, future);
-        Minecraft.getMinecraft().thePlayer.sendChatMessage("/stats " + name);
+        this.requestQueue.offer("/stats " + name);
         return future;
     }
 

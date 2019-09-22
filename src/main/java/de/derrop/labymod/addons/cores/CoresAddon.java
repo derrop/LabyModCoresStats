@@ -3,9 +3,11 @@ package de.derrop.labymod.addons.cores;
  * Created by derrop on 22.09.2019
  */
 
+import com.mojang.authlib.GameProfile;
 import de.derrop.labymod.addons.cores.clan.ClanDetector;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
+import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.party.PartyDetector;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
@@ -13,43 +15,63 @@ import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.settings.elements.SettingsElement;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
+import java.util.UUID;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class CoresAddon extends LabyModAddon {
 
-    private StatsParser statsParser = new StatsParser();
+    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(3);
+
+    private Map<UUID, GameProfile> onlinePlayers = new HashMap<>();
+
+    private StatsParser statsParser;
     private PartyDetector partyDetector = new PartyDetector();
     private ClanDetector clanDetector = new ClanDetector();
-    private ExecutorService executorService = Executors.newCachedThreadPool();
 
     public StatsParser getStatsParser() {
         return this.statsParser;
     }
 
-    public ExecutorService getExecutorService() {
+    public ClanDetector getClanDetector() {
+        return clanDetector;
+    }
+
+    public PartyDetector getPartyDetector() {
+        return partyDetector;
+    }
+
+    public ScheduledExecutorService getExecutorService() {
         return this.executorService;
+    }
+
+    public Map<UUID, GameProfile> getOnlinePlayers() {
+        return onlinePlayers;
     }
 
     @Override
     public void onEnable() {
         System.out.println("[CoresStats] Enabling addon...");
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
-        this.getApi().getEventManager().register(new PlayerLoginLogoutListener(this));
+        this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(this.partyDetector);
-        this.getApi().getEventManager().registerOnJoin(serverData -> {
-            //todo check for all online players stats and warn
-        });
+        this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
+
         this.getApi().getEventManager().registerOnQuit(serverData -> {
             this.partyDetector.handleLeaveParty();
             this.clanDetector.clearCache();
         });
+
+        this.statsParser = new StatsParser(this.executorService);
+
         System.out.println("[CoresStats] Successfully enabled the addon!");
     }
 
     public void warnOnGoodStats(PlayerStatistics statistics) {
+        System.out.println("PlayerStatistics for " + statistics.getName() + ": " + statistics.getStats());
         if (LabyModCore.getMinecraft().getPlayer().getName().equals(statistics.getName())) { //not warning for my good stats
             return;
         }
