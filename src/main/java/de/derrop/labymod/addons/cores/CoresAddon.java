@@ -63,6 +63,7 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().registerOnQuit(serverData -> {
             this.partyDetector.handleLeaveParty();
             this.clanDetector.clearCache();
+            this.onlinePlayers.clear();
         });
 
         this.statsParser = new StatsParser(this.executorService);

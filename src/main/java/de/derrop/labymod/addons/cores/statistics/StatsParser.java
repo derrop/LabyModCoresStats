@@ -34,6 +34,7 @@ public class StatsParser {
 
     private Map<String, PlayerStatistics> readStatistics = new HashMap<>();
     private Map<String, CompletableFuture<PlayerStatistics>> statsRequests = new HashMap<>();
+    private long lastBlock = -1;
 
     private BlockingQueue<String> requestQueue = new LinkedBlockingQueue<>();
 
@@ -47,6 +48,9 @@ public class StatsParser {
                         LabyModCore.getMinecraft().getPlayer().sendChatMessage(this.requestQueue.take());
                         Thread.sleep(300);
                     } else { //not connected to any server
+                        if (!this.requestQueue.isEmpty()) {
+                            this.requestQueue.clear();
+                        }
                         Thread.sleep(5000);
                     }
                 } catch (InterruptedException exception) {
@@ -111,6 +115,13 @@ public class StatsParser {
      * @return
      */
     public StatsParseResult handleChatMessage(String msg) {
+        if (msg.equals("Du hast zu viele Statistiken abgerufen, bitte versuche es in einer anderen Runde erneut.")) { //Gomme hates us :peepoCry:
+            for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
+                value.complete(null);
+            }
+            this.lastBlock = System.currentTimeMillis();
+            return StatsParseResult.NONE;
+        }
         if (this.readingStats != null) {
             if (this.isStatsEnd(msg)) {
                 this.readStatistics.put(this.readingStats.getName(), this.readingStats);
@@ -162,6 +173,11 @@ public class StatsParser {
     public CompletableFuture<PlayerStatistics> requestStats(String name) {
         if (this.statsRequests.containsKey(name))
             return this.statsRequests.get(name);
+
+        if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request again
+            return CompletableFuture.completedFuture(null);
+        }
+
         CompletableFuture<PlayerStatistics> future = new CompletableFuture<>();
         this.statsRequests.put(name, future);
         this.requestQueue.offer("/stats " + name);
