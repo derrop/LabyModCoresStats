@@ -5,6 +5,7 @@ package de.derrop.labymod.addons.cores;
 
 import com.mojang.authlib.GameProfile;
 import de.derrop.labymod.addons.cores.clan.ClanDetector;
+import de.derrop.labymod.addons.cores.listener.CommandListener;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
@@ -57,6 +58,7 @@ public class CoresAddon extends LabyModAddon {
         System.out.println("[CoresStats] Enabling addon...");
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
+        this.getApi().getEventManager().register(new CommandListener(this));
         this.getApi().getEventManager().register(this.partyDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
