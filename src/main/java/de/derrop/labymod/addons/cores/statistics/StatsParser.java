@@ -50,7 +50,7 @@ public class StatsParser {
         for (Map.Entry<Pattern, String> entry : STATS_ENTRIES.entrySet()) {
             Matcher matcher = entry.getKey().matcher(msg);
             if (matcher.find()) {
-                this.readingStats.getStats().put(entry.getValue(), matcher.group(1));
+                this.readingStats.getStats().put(entry.getValue(), matcher.group(1).replace(",", "")); //Gomme uses "," to split numbers (e.g. 1,000,000)
                 break;
             }
         }
