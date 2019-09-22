@@ -63,7 +63,7 @@ public class CoresAddon extends LabyModAddon {
 
         this.getApi().registerModule(new BestPlayerModule(this));
         this.getApi().registerModule(new WorstPlayerModule(this));
-
+        //todo sometimes players are not removed from the stats cache when a round ends and you don't leave the server fully (could be fixed by just clearing when Gomme sends an update with a server change for DiscordRPC)
         this.getApi().getEventManager().registerOnQuit(serverData -> {
             this.partyDetector.handleLeaveParty();
             this.statsParser.clearCachedStats();

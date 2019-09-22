@@ -19,7 +19,7 @@ public class WorstPlayerModule extends SimpleModule {
 
     @Override
     public String getDisplayName() {
-        return "Schlechtester Spieler";
+        return "Rangniedrigster";
     }
 
     @Override

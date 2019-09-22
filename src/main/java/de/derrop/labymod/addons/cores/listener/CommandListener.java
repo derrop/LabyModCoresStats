@@ -61,7 +61,7 @@ public class CommandListener implements MessageSendEvent {
                 LabyModCore.getMinecraft().displayMessageInChat("§7Gewonnene Spiele: §e" + stats.getStats().get("wonGames"));
             }
             if (stats.getStats().containsKey("winRate")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Siegwahrscheinlichkeit: §e" + stats.getStats().get("winRate"));
+                LabyModCore.getMinecraft().displayMessageInChat("§7Siegwahrscheinlichkeit: §e" + stats.getStats().get("winRate") + " %");
             }
         } else {
             LabyModCore.getMinecraft().displayMessageInChat("§7Es sind keine Statistiken geladen");
