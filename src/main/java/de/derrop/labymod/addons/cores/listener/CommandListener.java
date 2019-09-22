@@ -25,17 +25,15 @@ public class CommandListener implements MessageSendEvent {
         if (message.isEmpty())
             return false;
         if (message.charAt(0) != '!')
-            return true;
+            return false;
         String commandLine = message.substring(1);
         String[] args = commandLine.split(" ");
         if (args[0].equalsIgnoreCase("bestStats")) {
             this.displayStatistics(this.coresAddon.getBestPlayer());
-            return true;
         } else if (args[0].equalsIgnoreCase("worstStats")) {
             this.displayStatistics(this.coresAddon.getWorstPlayer());
-            return true;
         }
-        return false;
+        return true;
     }
 
     private void displayStatistics(PlayerStatistics stats) {
