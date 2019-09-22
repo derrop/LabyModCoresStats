@@ -54,7 +54,7 @@ public class CoresAddon extends LabyModAddon {
             return;
         }
 
-        if (this.partyDetector.getCurrentPartyMembers().contains(statistics.getName())) { //don't warn when the player is in my party todo not tested if this works
+        if (this.partyDetector.getCurrentPartyMembers().contains(statistics.getName())) { //don't warn when the player is in my party
             System.out.println("Party contains " + statistics.getName() + ", not warning the player!");
             return;
         }
