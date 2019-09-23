@@ -189,7 +189,7 @@ public class CoresAddon extends LabyModAddon {
             LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat eine Siegwahrscheinlichkeit von §e" + winRate + " %" +
                     " §8(Gespielt: §e" + playedGames + "§8; Gewonnen: §e" + wonGames + "§8)");
         }
-        if ((rank > 0 && rank <= 100) || (winRate >= 85) || (playedGames >= 500)) {
+        if ((rank > 0 && rank <= 100) || (winRate >= 85 && playedGames >= 30) || (playedGames >= 500)) {
             for (int i = 0; i < 5; i++) {
                 Minecraft.getMinecraft().thePlayer.playSound("note.pling", 1000F, 100F);
             }
