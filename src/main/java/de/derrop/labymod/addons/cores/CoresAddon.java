@@ -98,6 +98,7 @@ public class CoresAddon extends LabyModAddon {
             this.statsParser.reset();
             this.clanDetector.clearCache();
             this.onlinePlayers.clear();
+            this.currentServer = null;
         });
 
         this.getApi().getEventManager().register(this.serverDetector);
