@@ -139,19 +139,20 @@ public class StatsParser {
     }
 
     /**
-     * Clears the read messages from the current session
-     */
-    public void clearCachedStats() {
-        this.readStatistics.clear();
-    }
-
-    /**
      * Removes the statistics by the name out of the stats cache
      *
      * @param name the name of the player
      */
     public void removeFromCache(String name) {
         this.readStatistics.remove(name);
+    }
+
+    /**
+     * Clears the cache of statistics and removes the last blocked request
+     */
+    public void reset() {
+        this.readStatistics.clear();
+        this.lastBlock = -1;
     }
 
     /**
@@ -174,7 +175,9 @@ public class StatsParser {
         if (this.statsRequests.containsKey(name))
             return this.statsRequests.get(name);
 
-        if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request again
+        if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request directly after the other
+            //but it also seems like if you get a blocked request (after something around 10 - 15 requests), that you're not getting unblocked on this server until it restarts
+            //the requests have to be from different players, you could request the stats of a player as often as you want
             return CompletableFuture.completedFuture(null);
         }
 
