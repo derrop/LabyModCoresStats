@@ -101,7 +101,7 @@ public class CoresAddon extends LabyModAddon {
 
         this.getApi().getEventManager().register(this.serverDetector);
 
-        this.statsParser = new StatsParser(this.executorService);
+        this.statsParser = new StatsParser(this, this.executorService);
 
         System.out.println("[CoresStats] Successfully enabled the addon!");
     }

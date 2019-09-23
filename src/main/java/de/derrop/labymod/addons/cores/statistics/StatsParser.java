@@ -3,6 +3,7 @@ package de.derrop.labymod.addons.cores.statistics;
  * Created by derrop on 22.09.2019
  */
 
+import de.derrop.labymod.addons.cores.CoresAddon;
 import net.labymod.core.LabyModCore;
 
 import java.util.HashMap;
@@ -40,7 +41,10 @@ public class StatsParser {
 
     private PlayerStatistics readingStats;
 
-    public StatsParser(ExecutorService executorService) {
+    private CoresAddon coresAddon;
+
+    public StatsParser(CoresAddon coresAddon, ExecutorService executorService) {
+        this.coresAddon = coresAddon;
         executorService.execute(() -> {
             while (!Thread.interrupted()) {
                 try {
@@ -57,7 +61,7 @@ public class StatsParser {
                     exception.printStackTrace();
                 }
             }
-        });//, "StatsQueue-Executor").start();
+        });
     }
 
     private String getStatsPLayerName(String msg) {
@@ -115,6 +119,9 @@ public class StatsParser {
      * @return
      */
     public StatsParseResult handleChatMessage(String msg) {
+        if (this.coresAddon.getCurrentServer() == null || !this.coresAddon.getCurrentServer().equals("CORES")) {
+            return StatsParseResult.NONE;
+        }
         if (msg.equals("Du hast zu viele Statistiken abgerufen, bitte versuche es in einer anderen Runde erneut.")) { //Gomme hates us :peepoCry:
             for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
                 value.complete(null);
