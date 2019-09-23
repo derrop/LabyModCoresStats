@@ -16,7 +16,6 @@ import de.derrop.labymod.addons.cores.server.ServerDetector;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import net.labymod.api.LabyModAddon;
-import net.labymod.api.events.PluginMessageEvent;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.ModuleCategoryRegistry;
@@ -111,7 +110,6 @@ public class CoresAddon extends LabyModAddon {
         System.out.println("registered server switch from " + this.currentServer + " to " + serverType);
 
         this.statsParser.reset();
-        this.onlinePlayers.clear();
         this.currentServer = serverType;
 
         if (serverType.equals("CORES")) {
