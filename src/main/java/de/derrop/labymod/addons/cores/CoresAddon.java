@@ -18,7 +18,11 @@ import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import net.labymod.api.LabyModAddon;
 import net.labymod.api.events.PluginMessageEvent;
 import net.labymod.core.LabyModCore;
+import net.labymod.ingamegui.ModuleCategory;
+import net.labymod.ingamegui.ModuleCategoryRegistry;
+import net.labymod.settings.elements.ControlElement;
 import net.labymod.settings.elements.SettingsElement;
+import net.labymod.utils.Material;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -34,6 +38,9 @@ public class CoresAddon extends LabyModAddon {
     private PartyDetector partyDetector = new PartyDetector();
     private ClanDetector clanDetector = new ClanDetector();
     private String currentServer;
+
+    private ModuleCategory coresCategory;
+
     private final Random random = new Random();
 
     public StatsParser getStatsParser() {
@@ -60,9 +67,22 @@ public class CoresAddon extends LabyModAddon {
         return currentServer;
     }
 
+    public ModuleCategory getCoresCategory() {
+        return coresCategory;
+    }
+
     @Override
     public void onEnable() {
         System.out.println("[CoresStats] Enabling addon...");
+
+        ModuleCategoryRegistry.loadCategory(
+                this.coresCategory = new ModuleCategory(
+                        "Cores",
+                        true,
+                        new ControlElement.IconData(Material.BEACON)
+                )
+        );
+
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));

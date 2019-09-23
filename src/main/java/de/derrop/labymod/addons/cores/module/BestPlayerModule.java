@@ -5,6 +5,7 @@ package de.derrop.labymod.addons.cores.module;
 
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
+import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.moduletypes.SimpleModule;
 import net.labymod.settings.elements.ControlElement;
 import net.labymod.utils.Material;
@@ -28,7 +29,7 @@ public class BestPlayerModule extends SimpleModule {
         return statistics != null ? statistics.getName() : this.getDefaultValue();
     }
 
-    @Override //this should never be shown, because isShown is false when there is no cached player
+    @Override //this is only shown in the module editor
     public String getDefaultValue() {
         return "?";
     }
@@ -49,6 +50,11 @@ public class BestPlayerModule extends SimpleModule {
 
     @Override
     public String getSettingName() {
+        return "cores_best_player";
+    }
+
+    @Override
+    public String getControlName() {
         return "Best player";
     }
 
@@ -60,5 +66,10 @@ public class BestPlayerModule extends SimpleModule {
     @Override
     public int getSortingId() {
         return 0;
+    }
+
+    @Override
+    public ModuleCategory getCategory() {
+        return this.coresAddon.getCoresCategory();
     }
 }
