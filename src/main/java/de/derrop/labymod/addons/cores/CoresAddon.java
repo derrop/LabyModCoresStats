@@ -12,15 +12,16 @@ import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.module.BestPlayerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.party.PartyDetector;
+import de.derrop.labymod.addons.cores.server.ServerDetector;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import net.labymod.api.LabyModAddon;
+import net.labymod.api.events.PluginMessageEvent;
 import net.labymod.core.LabyModCore;
 import net.labymod.settings.elements.SettingsElement;
 
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 
 public class CoresAddon extends LabyModAddon {
 
@@ -28,9 +29,12 @@ public class CoresAddon extends LabyModAddon {
 
     private Map<UUID, GameProfile> onlinePlayers = new HashMap<>();
 
+    private ServerDetector serverDetector = new ServerDetector(this);
     private StatsParser statsParser;
     private PartyDetector partyDetector = new PartyDetector();
     private ClanDetector clanDetector = new ClanDetector();
+    private String currentServer;
+    private final Random random = new Random();
 
     public StatsParser getStatsParser() {
         return this.statsParser;
@@ -52,6 +56,10 @@ public class CoresAddon extends LabyModAddon {
         return onlinePlayers;
     }
 
+    public String getCurrentServer() {
+        return currentServer;
+    }
+
     @Override
     public void onEnable() {
         System.out.println("[CoresStats] Enabling addon...");
@@ -64,16 +72,48 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().registerModule(new BestPlayerModule(this));
         this.getApi().registerModule(new WorstPlayerModule(this));
         //todo sometimes players are not removed from the stats cache when a round ends and you don't leave the server fully (could be fixed by just clearing when Gomme sends an update with a server change for DiscordRPC)
+        //should be fixed now with #handleServerSwitch(String), but not tested yet
         this.getApi().getEventManager().registerOnQuit(serverData -> {
             this.partyDetector.handleLeaveParty();
-            this.statsParser.clearCachedStats();
+            this.statsParser.reset();
             this.clanDetector.clearCache();
             this.onlinePlayers.clear();
         });
 
+        this.getApi().getEventManager().register(this.serverDetector);
+
         this.statsParser = new StatsParser(this.executorService);
 
         System.out.println("[CoresStats] Successfully enabled the addon!");
+    }
+
+    public void handleServerSwitch(String serverType) {
+        System.out.println("registered server switch from " + this.currentServer + " to " + serverType);
+
+        this.statsParser.reset();
+        this.onlinePlayers.clear();
+        this.currentServer = serverType;
+
+        if (serverType.equals("CORES")) {
+            this.executorService.schedule(() -> { //wait for the tablist packets to arrive
+                for (GameProfile profile : this.onlinePlayers.values()) {
+                    this.requestPlayerStatsAndWarn(profile.getName());
+                }
+            }, 500, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    public void requestPlayerStatsAndWarn(String name) {
+        this.executorService.schedule(
+                () -> {
+                    try {
+                        this.warnOnGoodStats(this.getStatsParser().requestStats(name).get(6, TimeUnit.SECONDS));
+                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                        e.printStackTrace();
+                    }
+                },
+                this.random.nextInt(150) + 50, TimeUnit.MILLISECONDS
+        ); //min: 50; max: 200
     }
 
     public void warnOnGoodStats(PlayerStatistics statistics) {
