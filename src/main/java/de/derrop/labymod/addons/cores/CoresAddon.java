@@ -128,7 +128,7 @@ public class CoresAddon extends LabyModAddon {
         }
         String selfClan = this.clanDetector.getSelfClanShortcut();
         String otherClan = this.clanDetector.getClanShortcut(statistics.getName());
-        if (selfClan != null && selfClan.equals(otherClan)) { //don't warn when the player is in my clan todo not tested if this works
+        if (selfClan != null && selfClan.equals(otherClan)) { //don't warn when the player is in my clan
             System.out.println("Clan contains " + statistics.getName() + ", not warning the player!");
             return;
         }
