@@ -3,8 +3,11 @@ package de.derrop.labymod.addons.cores;
  * Created by derrop on 22.09.2019
  */
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
 import de.derrop.labymod.addons.cores.clan.ClanDetector;
+import de.derrop.labymod.addons.cores.display.StatisticsDisplay;
 import de.derrop.labymod.addons.cores.listener.CommandListener;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
@@ -19,17 +22,21 @@ import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.ModuleCategoryRegistry;
+import net.labymod.settings.elements.BooleanElement;
 import net.labymod.settings.elements.ControlElement;
 import net.labymod.settings.elements.SettingsElement;
 import net.labymod.utils.Material;
 import net.minecraft.client.Minecraft;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.*;
 
 public class CoresAddon extends LabyModAddon {
 
     private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(3);
+    private Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     private Map<UUID, GameProfile> onlinePlayers = new HashMap<>();
 
@@ -38,6 +45,10 @@ public class CoresAddon extends LabyModAddon {
     private PartyDetector partyDetector = new PartyDetector();
     private ClanDetector clanDetector = new ClanDetector();
     private String currentServer;
+
+    private boolean externalDisplayEnabled;
+
+    private StatisticsDisplay display;
 
     private ModuleCategory coresCategory;
 
@@ -71,6 +82,14 @@ public class CoresAddon extends LabyModAddon {
         return coresCategory;
     }
 
+    public Gson getGson() {
+        return gson;
+    }
+
+    public StatisticsDisplay getDisplay() {
+        return display;
+    }
+
     @Override
     public void onEnable() {
         System.out.println("[CoresStats] Enabling addon...");
@@ -82,6 +101,8 @@ public class CoresAddon extends LabyModAddon {
                         new ControlElement.IconData(Material.BEACON)
                 )
         );
+
+        this.display = new StatisticsDisplay(this);
 
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
@@ -99,6 +120,7 @@ public class CoresAddon extends LabyModAddon {
             this.clanDetector.clearCache();
             this.onlinePlayers.clear();
             this.currentServer = null;
+            this.display.setVisible(false);
         });
 
         this.getApi().getEventManager().register(this.serverDetector);
@@ -120,6 +142,12 @@ public class CoresAddon extends LabyModAddon {
                     this.requestPlayerStatsAndWarn(profile.getName());
                 }
             }, 500, TimeUnit.MILLISECONDS);
+
+            if (this.externalDisplayEnabled) {
+                this.display.setVisible(true);
+            }
+        } else {
+            this.display.setVisible(false);
         }
     }
 
@@ -199,22 +227,52 @@ public class CoresAddon extends LabyModAddon {
     public PlayerStatistics getBestPlayer() {
         return this.statsParser.getCachedStats().values().stream()
                 .filter(stats -> stats.getStats().containsKey("rank"))
-                .min(Comparator.comparingInt(value -> Integer.parseInt(value.getStats().get("rank"))))
+                .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
+                .min(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))))
                 .orElse(null);
     }
+
+    //todo some players are sometimes not recognized when they join into a cores round (maybe already fixed, but not enough tested)
+    //todo higher delay because sometimes we get kicked with "disconnect.spam"
+    //todo (maybe) sync stats between clients with a server to not reach the request limit so fast
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()
                 .filter(stats -> stats.getStats().containsKey("rank"))
-                .max(Comparator.comparingInt(value -> Integer.parseInt(value.getStats().get("rank"))))
+                .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
+                .max(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))))
                 .orElse(null);
     }
 
     @Override
     public void loadConfig() {
+        this.externalDisplayEnabled = getConfig().has("externalDisplayEnabled") && getConfig().get("externalDisplayEnabled").getAsBoolean();
+        if (getConfig().has("externalDisplay")) {
+            Rectangle rectangle = this.gson.fromJson(
+                    getConfig().get("externalDisplay"),
+                    Rectangle.class
+            );
+            if (rectangle != null) {
+                this.display.setBounds(rectangle);
+                if (this.display.isVisible()) {
+                    this.display.repaint();
+                }
+            }
+        }
     }
 
     @Override
     protected void fillSettings(List<SettingsElement> subSettings) {
+        subSettings.add(
+                new BooleanElement("External Display", this, new ControlElement.IconData(Material.SIGN), "externalDisplayEnabled", false)
+                        .addCallback(externalDisplay -> {
+                            this.externalDisplayEnabled = externalDisplay;
+                            if (!this.externalDisplayEnabled) {
+                                this.display.setVisible(false);
+                            } else if (this.currentServer != null && this.currentServer.equals("CORES")) {
+                                this.display.setVisible(true);
+                            }
+                        })
+        );
     }
 }

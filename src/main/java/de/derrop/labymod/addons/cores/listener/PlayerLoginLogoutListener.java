@@ -30,6 +30,7 @@ public class PlayerLoginLogoutListener implements Consumer<Object> {
                         GameProfile profile = this.coresAddon.getOnlinePlayers().remove(addPlayerData.getProfile().getId());
                         if (profile != null) {
                             this.coresAddon.getStatsParser().removeFromCache(profile.getName());
+                            this.coresAddon.getDisplay().handleStatsUpdate();
                         }
                     }
                 }

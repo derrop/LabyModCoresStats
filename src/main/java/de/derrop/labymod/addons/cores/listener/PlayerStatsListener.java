@@ -27,6 +27,7 @@ public class PlayerStatsListener implements MessageReceiveEvent {
             CompletableFuture<PlayerStatistics> future = this.coresAddon.getStatsParser().getStatsRequests().get(stats.getName());
             if (future != null) {
                 this.coresAddon.getStatsParser().getStatsRequests().remove(stats.getName());
+                this.coresAddon.getDisplay().handleStatsUpdate();
                 future.complete(stats);
                 return true;
             }

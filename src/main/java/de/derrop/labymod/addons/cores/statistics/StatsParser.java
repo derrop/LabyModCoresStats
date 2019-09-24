@@ -8,10 +8,7 @@ import net.labymod.core.LabyModCore;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,7 +30,7 @@ public class StatsParser {
     }
 
 
-    private Map<String, PlayerStatistics> readStatistics = new HashMap<>();
+    private Map<String, PlayerStatistics> readStatistics = new ConcurrentHashMap<>();
     private Map<String, CompletableFuture<PlayerStatistics>> statsRequests = new HashMap<>();
     private long lastBlock = -1;
 
