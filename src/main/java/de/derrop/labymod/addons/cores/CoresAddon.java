@@ -191,7 +191,7 @@ public class CoresAddon extends LabyModAddon {
         }
         if ((rank > 0 && rank <= 100) || (winRate >= 85 && playedGames >= 30) || (playedGames >= 500)) {
             for (int i = 0; i < 5; i++) {
-                Minecraft.getMinecraft().thePlayer.playSound("note.pling", 1000F, 100F);
+                Minecraft.getMinecraft().thePlayer.playSound("note.pling", 1000F, 100F); //https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/mapping-and-modding-tutorials/2213619-1-8-all-playsound-sound-arguments
             }
         }
     }
@@ -199,14 +199,14 @@ public class CoresAddon extends LabyModAddon {
     public PlayerStatistics getBestPlayer() {
         return this.statsParser.getCachedStats().values().stream()
                 .filter(stats -> stats.getStats().containsKey("rank"))
-                .min(Comparator.comparingDouble(value -> Integer.parseInt(value.getStats().get("rank"))))
+                .min(Comparator.comparingInt(value -> Integer.parseInt(value.getStats().get("rank"))))
                 .orElse(null);
     }
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()
                 .filter(stats -> stats.getStats().containsKey("rank"))
-                .max(Comparator.comparingDouble(value -> Integer.parseInt(value.getStats().get("rank"))))
+                .max(Comparator.comparingInt(value -> Integer.parseInt(value.getStats().get("rank"))))
                 .orElse(null);
     }
 
