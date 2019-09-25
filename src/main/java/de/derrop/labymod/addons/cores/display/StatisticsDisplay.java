@@ -100,7 +100,7 @@ public class StatisticsDisplay extends JFrame {
                     Image image = cachedHeads.get(stats.getName());
                     int width = Math.max(image.getWidth(null), this.graphics.getFontMetrics().stringWidth(stats.getName()));
                     int height = image.getHeight(null) + this.graphics.getFont().getSize();
-                    if (width + this.x >= this.width) {
+                    if (width + this.x + this.distanceX >= this.width) {
                         this.nextLine(height);
                     }
 
