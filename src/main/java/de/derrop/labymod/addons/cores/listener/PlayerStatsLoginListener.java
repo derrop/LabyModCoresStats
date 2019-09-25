@@ -4,6 +4,7 @@ package de.derrop.labymod.addons.cores.listener;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.regex.Patterns;
 import net.labymod.api.events.MessageReceiveEvent;
 import net.labymod.core.LabyModCore;
 
@@ -12,8 +13,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PlayerStatsLoginListener implements MessageReceiveEvent {
-    private static final Pattern PLAYER_JOIN_PATTERN = Pattern.compile("» (.*) hat das Spiel betreten");
-
     private CoresAddon coresAddon;
 
     public PlayerStatsLoginListener(CoresAddon coresAddon) {
@@ -23,9 +22,9 @@ public class PlayerStatsLoginListener implements MessageReceiveEvent {
     @Override
     public boolean onReceive(String coloredMsg, String msg) {
         {
-            Matcher matcher = PLAYER_JOIN_PATTERN.matcher(msg);
+            Matcher matcher = Patterns.PLAYER_JOIN_PATTERN.matcher(msg);
             if (matcher.find()) { //player joined the match
-                String name = matcher.group(1);
+                String name = Patterns.matcherGroup(matcher);
 
                 if (!name.equals(LabyModCore.getMinecraft().getPlayer().getName()) &&
                         this.coresAddon.getCurrentServer() != null &&

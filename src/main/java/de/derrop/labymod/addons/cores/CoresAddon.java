@@ -165,6 +165,8 @@ public class CoresAddon extends LabyModAddon {
     }
 
     public void warnOnGoodStats(PlayerStatistics statistics) {
+        if (statistics == null)
+            return;
         System.out.println("PlayerStatistics for " + statistics.getName() + ": " + statistics.getStats());
         if (LabyModCore.getMinecraft().getPlayer().getName().equals(statistics.getName())) { //not warning for my good stats
             return;
@@ -232,9 +234,13 @@ public class CoresAddon extends LabyModAddon {
                 .orElse(null);
     }
 
-    //todo some players are sometimes not recognized when they join into a cores round (maybe already fixed, but not enough tested)
-    //todo higher delay because sometimes we get kicked with "disconnect.spam"
-    //todo (maybe) sync stats between clients with a server to not reach the request limit so fast
+    //todo #1 some players are sometimes not recognized when they join into a cores round (pretty rare now, if not fixed)
+    //      (maybe this is because of the TimeOut Exceptions in the console? I think, that the stats command is sent but the result not parsed correctly)
+    //      if you then execute /stats, you will not get any chat messages but the player will be added to the list of statistics
+    //      if you execute /stats a second time, you will get your chat messages normally
+    //todo #2 higher delay because sometimes we get kicked with "disconnect.spam"
+    //todo #3 (maybe) sync stats between clients with a server to not reach the request limit so fast
+    //todo #4 icon for the addon (addon.json)
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()

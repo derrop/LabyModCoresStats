@@ -4,6 +4,7 @@ package de.derrop.labymod.addons.cores.statistics;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.regex.Patterns;
 import net.labymod.core.LabyModCore;
 
 import java.util.HashMap;
@@ -13,22 +14,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class StatsParser {
-
-    private static final Pattern BEGIN_STATS_PATTERN = Pattern.compile("-= Statistiken von (.*) \\(30 Tage\\) =-");
-
-    private static final Map<Pattern, String> STATS_ENTRIES = new HashMap<>();
-
-    static {
-        STATS_ENTRIES.put(Pattern.compile(" Position im Ranking: (.*)"), "rank");
-        STATS_ENTRIES.put(Pattern.compile(" Kills: (.*)"), "kills");
-        STATS_ENTRIES.put(Pattern.compile(" Deaths: (.*)"), "deaths");
-        STATS_ENTRIES.put(Pattern.compile(" K/D: (.*)"), "kd");
-        STATS_ENTRIES.put(Pattern.compile(" Zerstörte Cores: (.*)"), "destroyedCores");
-        STATS_ENTRIES.put(Pattern.compile(" Gespielte Spiele: (.*)"), "playedGames");
-        STATS_ENTRIES.put(Pattern.compile(" Gewonnene Spiele: (.*)"), "wonGames");
-        STATS_ENTRIES.put(Pattern.compile(" Siegwahrscheinlichkeit: (.*) Prozent"), "winRate");
-    }
-
 
     private Map<String, PlayerStatistics> readStatistics = new ConcurrentHashMap<>();
     private Map<String, CompletableFuture<PlayerStatistics>> statsRequests = new HashMap<>();
@@ -45,12 +30,20 @@ public class StatsParser {
         executorService.execute(() -> {
             while (!Thread.interrupted()) {
                 try {
+                    String name = this.requestQueue.take();
                     if (LabyModCore.getMinecraft().getPlayer() != null) {
-                        LabyModCore.getMinecraft().getPlayer().sendChatMessage(this.requestQueue.take());
+                        LabyModCore.getMinecraft().getPlayer().sendChatMessage("/stats " + name);
                         Thread.sleep(300);
                     } else { //not connected to any server
-                        if (!this.requestQueue.isEmpty()) {
-                            this.requestQueue.clear();
+                        CompletableFuture<PlayerStatistics> future = this.statsRequests.get(name);
+                        if (future != null) {
+                            future.complete(null);
+                        }
+                        while (!this.requestQueue.isEmpty()) {
+                            future = this.statsRequests.remove(this.requestQueue.poll());
+                            if (future != null) {
+                                future.complete(null);
+                            }
                         }
                         Thread.sleep(5000);
                     }
@@ -62,9 +55,9 @@ public class StatsParser {
     }
 
     private String getStatsPLayerName(String msg) {
-        Matcher matcher = BEGIN_STATS_PATTERN.matcher(msg);
+        Matcher matcher = Patterns.BEGIN_STATS_PATTERN.matcher(msg);
         if (matcher.find()) {
-            return matcher.group(1);
+            return Patterns.matcherGroup(matcher);
         }
         return null;
     }
@@ -74,10 +67,10 @@ public class StatsParser {
     }
 
     private void handleStats(String msg) {
-        for (Map.Entry<Pattern, String> entry : STATS_ENTRIES.entrySet()) {
+        for (Map.Entry<Pattern, String> entry : Patterns.STATS_ENTRIES.entrySet()) {
             Matcher matcher = entry.getKey().matcher(msg);
             if (matcher.find()) {
-                this.readingStats.getStats().put(entry.getValue(), matcher.group(1).replace(",", "")); //Gomme uses "," to split numbers (e.g. 1,000,000)
+                this.readingStats.getStats().put(entry.getValue(), Patterns.matcherGroup(matcher).replace(",", "")); //Gomme uses "," to split numbers (e.g. 1,000,000)
                 break;
             }
         }
@@ -157,6 +150,10 @@ public class StatsParser {
     public void reset() {
         this.readStatistics.clear();
         this.lastBlock = -1;
+        for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
+            value.complete(null);
+        }
+        this.statsRequests.clear();
     }
 
     /**
@@ -187,7 +184,7 @@ public class StatsParser {
 
         CompletableFuture<PlayerStatistics> future = new CompletableFuture<>();
         this.statsRequests.put(name, future);
-        this.requestQueue.offer("/stats " + name);
+        this.requestQueue.offer(name);
         return future;
     }
 
