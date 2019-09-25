@@ -43,7 +43,7 @@ public class StatisticsDisplay extends JFrame {
     }
 
 
-    public void handleStatsUpdate() { //todo not tested if this works when a player disconnects in a round
+    public void handleStatsUpdate() {
         super.repaint();
     }
 
