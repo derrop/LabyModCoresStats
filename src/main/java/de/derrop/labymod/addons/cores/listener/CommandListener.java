@@ -7,10 +7,6 @@ import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import net.labymod.api.events.MessageSendEvent;
 import net.labymod.core.LabyModCore;
-import net.minecraft.client.Minecraft;
-
-import java.util.Comparator;
-import java.util.Optional;
 
 public class CommandListener implements MessageSendEvent {
 
@@ -22,10 +18,12 @@ public class CommandListener implements MessageSendEvent {
 
     @Override
     public boolean onSend(String message) {
-        if (message.isEmpty())
+        if (message.isEmpty()) {
             return false;
-        if (message.charAt(0) != '!')
+        }
+        if (message.charAt(0) != '!') {
             return false;
+        }
         String commandLine = message.substring(1);
         String[] args = commandLine.split(" ");
         if (args[0].equalsIgnoreCase("bestStats")) {

@@ -27,21 +27,27 @@ public class Patterns {
         STATS_ENTRIES.put(Pattern.compile(" Gewonnene Spiele: (.*)| Games won: (.*)"), "wonGames");
         STATS_ENTRIES.put(Pattern.compile(" Siegwahrscheinlichkeit: (.*) Prozent| Probability of winning: (.*)%"), "winRate");
     }
-    //statistics
 
-    //parties
-    public static final Pattern PARTY_JOIN_PATTERN = Pattern.compile("\\[Party\\] (.*) hat die Party betreten|\\[Party\\] (.*) joined the party");
-    public static final Pattern PARTY_LEAVE_PATTERN = Pattern.compile("\\[Party\\] (.*) hat die Party verlassen|\\[Party\\] (.*) left the party");
-    public static final Pattern PARTY_LIST_PATTERN = Pattern.compile("\\[Party\\] Mitglieder der Party von (.*) \\(*\\)|\\[Party\\] Members of (.*)'s party \\(*\\)");
-    //parties
+    //scoreboard
+    public static final Pattern SCOREBOARD_CLAN_PATTERN = Pattern.compile("\\[§e(.*)]");
+    public static final Pattern SCOREBOARD_PARTY_PATTERN = Pattern.compile("\\[§5(.*)]");
 
     //general
     public static final Pattern PLAYER_JOIN_PATTERN = Pattern.compile("» (.*) hat das Spiel betreten|» (.*) joined the game");
-    //general
 
-    public static String matcherGroup(Matcher matcher) {
-        return matcher.group(1) != null ? matcher.group(1) : //german
-                matcher.group(2);                            //english
+    public static String matcherGroup(Matcher... matchers) {
+        for (Matcher matcher : matchers) {
+            String firstGroup = matcher.group(1);  //german
+            if (firstGroup != null) {
+                return firstGroup;
+            }
+
+            String secondGroup = matcher.group(2); //english
+            if (secondGroup != null) {
+                return secondGroup;
+            }
+        }
+        return null;
     }
 
 }

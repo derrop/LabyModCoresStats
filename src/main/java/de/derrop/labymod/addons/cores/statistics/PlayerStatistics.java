@@ -10,7 +10,7 @@ public class PlayerStatistics {
     private String name;
     private Map<String, String> stats;
 
-    public PlayerStatistics(String name, Map<String, String> stats) {
+    PlayerStatistics(String name, Map<String, String> stats) {
         this.name = name;
         this.stats = stats;
     }

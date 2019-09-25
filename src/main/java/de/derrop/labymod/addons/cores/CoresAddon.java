@@ -6,7 +6,8 @@ package de.derrop.labymod.addons.cores;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
-import de.derrop.labymod.addons.cores.clan.ClanDetector;
+import de.derrop.labymod.addons.cores.detector.ScoreboardTagDetector;
+import de.derrop.labymod.addons.cores.detector.ServerDetector;
 import de.derrop.labymod.addons.cores.display.StatisticsDisplay;
 import de.derrop.labymod.addons.cores.listener.CommandListener;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
@@ -14,8 +15,6 @@ import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.module.BestPlayerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
-import de.derrop.labymod.addons.cores.party.PartyDetector;
-import de.derrop.labymod.addons.cores.server.ServerDetector;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import net.labymod.api.LabyModAddon;
@@ -29,8 +28,8 @@ import net.labymod.utils.Material;
 import net.minecraft.client.Minecraft;
 
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
 
@@ -43,8 +42,7 @@ public class CoresAddon extends LabyModAddon {
 
     private ServerDetector serverDetector = new ServerDetector(this);
     private StatsParser statsParser;
-    private PartyDetector partyDetector = new PartyDetector();
-    private ClanDetector clanDetector = new ClanDetector();
+    private ScoreboardTagDetector scoreboardTagDetector = new ScoreboardTagDetector();
     private String currentServer;
 
     private boolean externalDisplayEnabled;
@@ -59,12 +57,8 @@ public class CoresAddon extends LabyModAddon {
         return this.statsParser;
     }
 
-    public ClanDetector getClanDetector() {
-        return clanDetector;
-    }
-
-    public PartyDetector getPartyDetector() {
-        return partyDetector;
+    public ScoreboardTagDetector getScoreboardTagDetector() {
+        return scoreboardTagDetector;
     }
 
     public ScheduledExecutorService getExecutorService() {
@@ -108,15 +102,13 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));
-        this.getApi().getEventManager().register(this.partyDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
         this.getApi().registerModule(new BestPlayerModule(this));
         this.getApi().registerModule(new WorstPlayerModule(this));
         this.getApi().getEventManager().registerOnQuit(serverData -> {
-            this.partyDetector.handleLeaveParty();
             this.statsParser.reset();
-            this.clanDetector.clearCache();
+            this.scoreboardTagDetector.clearCache();
             this.onlinePlayers.clear();
             this.currentServer = null;
             this.display.setVisible(false);
@@ -155,30 +147,28 @@ public class CoresAddon extends LabyModAddon {
                 () -> {
                     try {
                         this.warnOnGoodStats(this.getStatsParser().requestStats(name).get(6, TimeUnit.SECONDS));
-                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                        e.printStackTrace();
+                    } catch (InterruptedException | ExecutionException | TimeoutException exception) {
+                        exception.printStackTrace();
                     }
                 },
                 this.random.nextInt(150) + 50, TimeUnit.MILLISECONDS
         ); //min: 50; max: 200
     }
 
-    public void warnOnGoodStats(PlayerStatistics statistics) {
-        if (statistics == null)
+    private void warnOnGoodStats(PlayerStatistics statistics) {
+        if (statistics == null) {
             return;
+        }
         System.out.println("PlayerStatistics for " + statistics.getName() + ": " + statistics.getStats());
         if (LabyModCore.getMinecraft().getPlayer().getName().equals(statistics.getName())) { //not warning for my good stats
             return;
         }
 
-        if (this.partyDetector.getCurrentPartyMembers().contains(statistics.getName())) { //don't warn when the player is in my party
-            System.out.println("Party contains " + statistics.getName() + ", not warning the player!");
-            return;
-        }
-        String selfClan = this.clanDetector.getSelfClanShortcut();
-        String otherClan = this.clanDetector.getClanShortcut(statistics.getName());
-        if (selfClan != null && selfClan.equals(otherClan)) { //don't warn when the player is in my clan
-            System.out.println("Clan contains " + statistics.getName() + ", not warning the player!");
+        String selfTag = this.scoreboardTagDetector.getSelfScoreboardTag();
+        String otherTag = this.scoreboardTagDetector.getScoreboardTag(statistics.getName());
+
+        if (selfTag != null && selfTag.equals(otherTag)) { //don't warn when the player is in my clan/party
+            System.out.println("Clan/Party contains " + statistics.getName() + ", not warning the player!");
             return;
         }
 

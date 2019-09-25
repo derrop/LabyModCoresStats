@@ -173,8 +173,9 @@ public class StatsParser {
      * @return the future with the {@link PlayerStatistics} object
      */
     public CompletableFuture<PlayerStatistics> requestStats(String name) {
-        if (this.statsRequests.containsKey(name))
+        if (this.statsRequests.containsKey(name)) {
             return this.statsRequests.get(name);
+        }
 
         if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request directly after the other
             //but it also seems like if you get a blocked request (after something around 10 - 15 requests), that you're not getting unblocked on this server until it restarts

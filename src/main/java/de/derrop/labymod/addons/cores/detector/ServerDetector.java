@@ -1,4 +1,4 @@
-package de.derrop.labymod.addons.cores.server;
+package de.derrop.labymod.addons.cores.detector;
 /*
  * Created by derrop on 23.09.2019
  */
@@ -23,7 +23,7 @@ public class ServerDetector implements PluginMessageEvent {
         this.coresAddon = coresAddon;
     }
 
-    public String readStringFromBuffer(int maxLength, PacketBuffer packetBuffer) {
+    private String readStringFromBuffer(int maxLength, PacketBuffer packetBuffer) {
         int i = readVarIntFromBuffer(packetBuffer);
         if (i > maxLength * 4) {
             throw new DecoderException("The received encoded string buffer length is longer than maximum allowed (" + i + " > " + maxLength * 4 + ")");
@@ -38,7 +38,7 @@ public class ServerDetector implements PluginMessageEvent {
         return s;
     }
 
-    public int readVarIntFromBuffer(PacketBuffer packetBuffer) {
+    private int readVarIntFromBuffer(PacketBuffer packetBuffer) {
         int i = 0;
         int j = 0;
         for (; ; ) {

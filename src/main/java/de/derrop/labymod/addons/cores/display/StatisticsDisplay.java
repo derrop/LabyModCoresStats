@@ -25,20 +25,19 @@ public class StatisticsDisplay extends JFrame {
 
     private CoresAddon coresAddon;
 
-    private JPanel container = new JPanel() {
-        @Override
-        protected void paintComponent(Graphics g) {
-            StatisticsDisplay.this.paintComponent(g);
-        }
-    };
-
     public StatisticsDisplay(CoresAddon coresAddon) {
         super("Cores");
 
         this.coresAddon = coresAddon;
 
 
-        super.add(this.container);
+        JPanel container = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                StatisticsDisplay.this.paintComponent(g);
+            }
+        };
+        super.add(container);
         super.setSize(700, 300);
     }
 
@@ -47,7 +46,7 @@ public class StatisticsDisplay extends JFrame {
         super.repaint();
     }
 
-    public void paintComponent(Graphics graphics) {
+    private void paintComponent(Graphics graphics) {
         new DrawAction(graphics, this.getWidth(), this.getHeight())
                 .draw(this.coresAddon.getStatsParser().getCachedStats().values());
         this.coresAddon.getConfig().add("externalDisplay", this.coresAddon.getGson().toJsonTree(this.getBounds()));
@@ -74,17 +73,16 @@ public class StatisticsDisplay extends JFrame {
         private int x;
         private int y;
 
-        private int width, height;
+        private int width;
 
-        public DrawAction(Graphics graphics, int width, int height) {
+        DrawAction(Graphics graphics, int width, int height) {
             this.graphics = graphics;
             this.x = this.distanceX;
             this.y = this.distanceY;
             this.width = width;
-            this.height = height;
         }
 
-        public void draw(Collection<PlayerStatistics> statistics) {
+        void draw(Collection<PlayerStatistics> statistics) {
             this.graphics.setFont(new Font("Arial", Font.PLAIN, 15));
 
             this.drawString("Spieler online: " + statistics.size());
@@ -128,8 +126,9 @@ public class StatisticsDisplay extends JFrame {
                     int yDiff = this.distanceY;
                     for (String text : texts) {
                         int textWidth = this.graphics.getFontMetrics().stringWidth(text);
-                        if (textWidth > width)
+                        if (textWidth > width) {
                             width = textWidth;
+                        }
                         yDiff += this.graphics.getFont().getSize() + this.distanceY;
                     }
                     int height = image.getHeight(null) + yDiff;
