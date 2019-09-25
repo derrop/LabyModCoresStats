@@ -32,6 +32,7 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 public class CoresAddon extends LabyModAddon {
 
@@ -248,6 +249,12 @@ public class CoresAddon extends LabyModAddon {
                 .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
                 .max(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))))
                 .orElse(null);
+    }
+
+    public Stream<PlayerStatistics> sortStatsStream(Stream<PlayerStatistics> stream) {
+        return stream.filter(stats -> stats.getStats().containsKey("rank"))
+                .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
+                .sorted(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))));
     }
 
     @Override

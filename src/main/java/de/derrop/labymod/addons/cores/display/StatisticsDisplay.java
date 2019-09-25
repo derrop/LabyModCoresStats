@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -91,25 +92,61 @@ public class StatisticsDisplay extends JFrame {
             if (statistics.isEmpty()) {
                 return;
             }
-            for (PlayerStatistics stats : statistics) {
+            coresAddon.sortStatsStream(statistics.stream()).forEach(stats -> {
                 if (!cachedHeads.containsKey(stats.getName())) {
                     loadHead(stats.getName());
                 }
 
                 if (cachedHeads.containsKey(stats.getName())) {
+                    Collection<String> texts = new ArrayList<>();
+                    texts.add(stats.getName());
+                    texts.add(" ");
+                    if (stats.getStats().containsKey("rank")) {
+                        texts.add("Rang: " + stats.getStats().get("rank"));
+                    }
+                    if (stats.getStats().containsKey("winRate")) {
+                        texts.add("Gewinnwahrscheinlichkeit: " + stats.getStats().get("winRate") + " %");
+                    }
+                    if (stats.getStats().containsKey("playedGames")) {
+                        texts.add("Gespielte Spiele: " + stats.getStats().get("playedGames"));
+                    }
+                    if (stats.getStats().containsKey("wonGames")) {
+                        texts.add("Gewonnene Spiele: " + stats.getStats().get("wonGames"));
+                    }
+                    if (stats.getStats().containsKey("kd")) {
+                        texts.add("K/D: " + stats.getStats().get("kd"));
+                    }
+                    if (stats.getStats().containsKey("kills")) {
+                        texts.add("Kills: " + stats.getStats().get("kills"));
+                    }
+                    if (stats.getStats().containsKey("deaths")) {
+                        texts.add("Deaths: " + stats.getStats().get("deaths"));
+                    }
+
                     Image image = cachedHeads.get(stats.getName());
-                    int width = Math.max(image.getWidth(null), this.graphics.getFontMetrics().stringWidth(stats.getName()));
-                    int height = image.getHeight(null) + this.graphics.getFont().getSize();
+                    int width = image.getWidth(null);
+                    int yDiff = this.distanceY;
+                    for (String text : texts) {
+                        int textWidth = this.graphics.getFontMetrics().stringWidth(text);
+                        if (textWidth > width)
+                            width = textWidth;
+                        yDiff += this.graphics.getFont().getSize() + this.distanceY;
+                    }
+                    int height = image.getHeight(null) + yDiff;
                     if (width + this.x + this.distanceX >= this.width) {
                         this.nextLine(height);
                     }
+                    yDiff = this.distanceY;
+                    for (String text : texts) {
+                        this.graphics.drawString(text, this.x, this.y + yDiff + image.getHeight(null));
+                        yDiff += this.graphics.getFont().getSize() + this.distanceY;
+                    }
 
-                    this.graphics.drawString(stats.getName(), this.x, this.y);
-                    this.graphics.drawImage(image, this.x, this.y + this.distanceY, null);
+                    this.graphics.drawImage(image, this.x, this.y, null);
 
                     this.x += width + this.distanceX;
                 }
-            }
+            });
         }
 
         private void drawString(String draw) {
