@@ -10,6 +10,7 @@ import net.minecraft.scoreboard.Scoreboard;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
 
 public class ScoreboardTagDetector {
 
@@ -62,11 +63,13 @@ public class ScoreboardTagDetector {
             for (ScorePlayerTeam team : scoreboard.getTeams()) {
                 if (team.getMembershipCollection().contains(playerName)) {
                     String suffix = team.getColorSuffix();
-                    String tag = Patterns.matcherGroup(Patterns.SCOREBOARD_CLAN_PATTERN.matcher(suffix), Patterns.SCOREBOARD_PARTY_PATTERN.matcher(suffix));
+                    Matcher matcher = Patterns.SCOREBOARD_SUFFIX_PATTERN.matcher(suffix);
+                    if (matcher.find()) {
+                        String tag = Patterns.matcherGroup(matcher);
 
-                    if (tag != null) {
-                        this.cachedTags.put(playerName, tag);
-                        return tag;
+                        if (tag != null) {
+                            return tag;
+                        }
                     }
                 }
             }

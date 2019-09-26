@@ -166,7 +166,6 @@ public class CoresAddon extends LabyModAddon {
 
         String selfTag = this.scoreboardTagDetector.getSelfScoreboardTag();
         String otherTag = this.scoreboardTagDetector.getScoreboardTag(statistics.getName());
-
         if (selfTag != null && selfTag.equals(otherTag)) { //don't warn when the player is in my clan/party
             System.out.println("Clan/Party contains " + statistics.getName() + ", not warning the player!");
             return;

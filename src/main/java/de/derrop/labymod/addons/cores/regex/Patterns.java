@@ -29,23 +29,20 @@ public class Patterns {
     }
 
     //scoreboard
-    public static final Pattern SCOREBOARD_CLAN_PATTERN = Pattern.compile("\\[§e(.*)]");
-    public static final Pattern SCOREBOARD_PARTY_PATTERN = Pattern.compile("\\[§5(.*)]");
+    public static final Pattern SCOREBOARD_SUFFIX_PATTERN = Pattern.compile("\\[§e(.*)§7]|\\[§5(.*)§7]"); //clan|party
 
     //general
     public static final Pattern PLAYER_JOIN_PATTERN = Pattern.compile("» (.*) hat das Spiel betreten|» (.*) joined the game");
 
-    public static String matcherGroup(Matcher... matchers) {
-        for (Matcher matcher : matchers) {
-            String firstGroup = matcher.group(1);  //german
-            if (firstGroup != null) {
-                return firstGroup;
-            }
+    public static String matcherGroup(Matcher matcher) {
+        String firstGroup = matcher.group(1);  //1|2
+        if (firstGroup != null) {
+            return firstGroup;
+        }
 
-            String secondGroup = matcher.group(2); //english
-            if (secondGroup != null) {
-                return secondGroup;
-            }
+        String secondGroup = matcher.group(2); //1|2
+        if (secondGroup != null) {
+            return secondGroup;
         }
         return null;
     }
