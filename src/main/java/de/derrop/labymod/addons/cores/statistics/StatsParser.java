@@ -4,14 +4,17 @@ package de.derrop.labymod.addons.cores.statistics;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.regex.Patterns;
+import de.derrop.labymod.addons.cores.statistics.types.CoresStatistics;
 import net.labymod.core.LabyModCore;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class StatsParser {
 
@@ -54,7 +57,7 @@ public class StatsParser {
         });
     }
 
-    private String getStatsPLayerName(String msg) {
+    private String getStatsPlayerName(String msg) {
         Matcher matcher = Patterns.BEGIN_STATS_PATTERN.matcher(msg);
         if (matcher.find()) {
             return Patterns.matcherGroup(matcher);
@@ -62,27 +65,36 @@ public class StatsParser {
         return null;
     }
 
-    private boolean isStatsEnd(String msg) {
-        return msg.equals("------------------------------");
-    }
-
-    private void handleStats(String msg) {
-        for (Map.Entry<Pattern, String> entry : Patterns.STATS_ENTRIES.entrySet()) {
-            Matcher matcher = entry.getKey().matcher(msg);
-            if (matcher.find()) {
-                this.readingStats.getStats().put(entry.getValue(), Patterns.matcherGroup(matcher).replace(",", "")); //Gomme uses "," to split numbers (e.g. 1,000,000)
-                break;
-            }
-        }
-    }
-
     /**
-     * Gets all read statistics in the current session
+     * Gets all cached statistics in the current session
      *
      * @return
      */
     public Map<String, PlayerStatistics> getCachedStats() {
         return readStatistics;
+    }
+
+    /**
+     * Gets all cached statistics in the current session mapped to the given game type
+     *
+     * @param gameType the game type to map to
+     * @return a stream containing all statistics mapped to the given game type
+     */
+    public <T extends PlayerStatistics> Stream<T> getCachedStats(String gameType, Class<T> clazz) {
+        return this.readStatistics.values()
+                .stream()
+                .filter(statistics -> statistics.getGameType().equals(gameType))
+                .map(statistics -> (T) statistics);
+    }
+
+    /**
+     * Gets all cached statistics in the current session mapped to the game type on the current server
+     *
+     * @return an empty stream if the player is not on a server with a supported server type or a stream containing all statistics mapped to the game type of the current server
+     * @see StatsParser#getCachedStats(String, Class)
+     */
+    public <T extends PlayerStatistics> Stream<T> getCachedStatsMapped(Class<T> clazz) {
+        return this.coresAddon.getCurrentServer() != null ? this.getCachedStats(this.coresAddon.getCurrentServer(), clazz) : Stream.empty();
     }
 
     public Map<String, CompletableFuture<PlayerStatistics>> getStatsRequests() {
@@ -108,11 +120,13 @@ public class StatsParser {
      * @param msg the message including color codes
      * @return
      */
-    public StatsParseResult handleChatMessage(String msg) {
-        if (this.coresAddon.getCurrentServer() == null || !this.coresAddon.getCurrentServer().equals("CORES")) {
+    public StatsParseResult handleChatMessage(String message) {
+        if (!this.coresAddon.isCurrentServerTypeSupported()) {
             return StatsParseResult.NONE;
         }
-        if (msg.equals("Du hast zu viele Statistiken abgerufen, bitte versuche es in einer anderen Runde erneut.")) { //Gomme hates us :peepoCry:
+        if (message.equals("Du hast zu viele Statistiken abgerufen, bitte versuche es in einer anderen Runde erneut.") || //german
+                message.equals("")) { //todo english
+            //Gomme hates us :peepoCry:
             for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
                 value.complete(null);
             }
@@ -120,17 +134,22 @@ public class StatsParser {
             return StatsParseResult.NONE;
         }
         if (this.readingStats != null) {
-            if (this.isStatsEnd(msg)) {
+            if (this.readingStats.isStatsEnd(message)) {
                 this.readStatistics.put(this.readingStats.getName(), this.readingStats);
                 return StatsParseResult.END;
             }
-            this.handleStats(msg);
+            this.readingStats.parseLine(message);
             return StatsParseResult.ENTRY;
         }
-        String name = this.getStatsPLayerName(msg);
+        String name = this.getStatsPlayerName(message);
         if (name != null) {
-            this.readingStats = new PlayerStatistics(name, new HashMap<>());
-            return StatsParseResult.BEGIN;
+            GameType gameType = this.coresAddon.getCurrentServerType();
+            if (gameType != null) {
+                this.readingStats = gameType.getStatisticsProvider().apply(name);
+                if (this.readingStats != null) {
+                    return StatsParseResult.BEGIN;
+                }
+            }
         }
         return StatsParseResult.NONE;
     }
@@ -173,8 +192,9 @@ public class StatsParser {
      * @return the future with the {@link PlayerStatistics} object
      */
     public CompletableFuture<PlayerStatistics> requestStats(String name) {
-        if (this.statsRequests.containsKey(name))
+        if (this.statsRequests.containsKey(name)) {
             return this.statsRequests.get(name);
+        }
 
         if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request directly after the other
             //but it also seems like if you get a blocked request (after something around 10 - 15 requests), that you're not getting unblocked on this server until it restarts

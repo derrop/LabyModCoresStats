@@ -17,11 +17,11 @@ public class PlayerLoginLogoutListener implements Consumer<Object> {
     }
 
     @Override
-    public void accept(Object o) {
-        if (o instanceof S38PacketPlayerListItem) {
-            S38PacketPlayerListItem packet = ((S38PacketPlayerListItem) o);
+    public void accept(Object object) {
+        if (object instanceof S38PacketPlayerListItem) {
+            S38PacketPlayerListItem packet = ((S38PacketPlayerListItem) object);
             if (packet.func_179768_b() == S38PacketPlayerListItem.Action.ADD_PLAYER) {
-                for (S38PacketPlayerListItem.AddPlayerData addPlayerData : ((S38PacketPlayerListItem) o).func_179767_a()) {
+                for (S38PacketPlayerListItem.AddPlayerData addPlayerData : ((S38PacketPlayerListItem) object).func_179767_a()) {
                     this.coresAddon.getOnlinePlayers().put(addPlayerData.getProfile().getId(), addPlayerData.getProfile());
                 }
             } else if (packet.func_179768_b() == S38PacketPlayerListItem.Action.REMOVE_PLAYER) {

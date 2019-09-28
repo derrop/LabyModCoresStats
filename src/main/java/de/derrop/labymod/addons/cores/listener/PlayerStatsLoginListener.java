@@ -8,9 +8,7 @@ import de.derrop.labymod.addons.cores.regex.Patterns;
 import net.labymod.api.events.MessageReceiveEvent;
 import net.labymod.core.LabyModCore;
 
-import java.util.Random;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class PlayerStatsLoginListener implements MessageReceiveEvent {
     private CoresAddon coresAddon;
@@ -26,9 +24,8 @@ public class PlayerStatsLoginListener implements MessageReceiveEvent {
             if (matcher.find()) { //player joined the match
                 String name = Patterns.matcherGroup(matcher);
 
-                if (!name.equals(LabyModCore.getMinecraft().getPlayer().getName()) &&
-                        this.coresAddon.getCurrentServer() != null &&
-                        this.coresAddon.getCurrentServer().equals("CORES")) {
+                if (name != null && !name.equals(LabyModCore.getMinecraft().getPlayer().getName()) &&
+                        this.coresAddon.isCurrentServerTypeSupported()) {
                     this.coresAddon.requestPlayerStatsAndWarn(name);
                 }
                 return false;

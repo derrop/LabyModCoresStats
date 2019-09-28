@@ -7,10 +7,6 @@ import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import net.labymod.api.events.MessageSendEvent;
 import net.labymod.core.LabyModCore;
-import net.minecraft.client.Minecraft;
-
-import java.util.Comparator;
-import java.util.Optional;
 
 public class CommandListener implements MessageSendEvent {
 
@@ -22,24 +18,33 @@ public class CommandListener implements MessageSendEvent {
 
     @Override
     public boolean onSend(String message) {
-        if (message.isEmpty())
+        if (message.isEmpty()) {
             return false;
-        if (message.charAt(0) != '!')
+        }
+        if (message.charAt(0) != '!') {
             return false;
+        }
         String commandLine = message.substring(1);
         String[] args = commandLine.split(" ");
         if (args[0].equalsIgnoreCase("bestStats")) {
-            this.displayStatistics(this.coresAddon.getBestPlayer());
+            this.displayStatistics(this.coresAddon.getBestPlayer(), true);
         } else if (args[0].equalsIgnoreCase("worstStats")) {
-            this.displayStatistics(this.coresAddon.getWorstPlayer());
+            this.displayStatistics(this.coresAddon.getWorstPlayer(), false);
         }
         return true;
     }
 
-    private void displayStatistics(PlayerStatistics stats) {
+    private void displayStatistics(PlayerStatistics stats, boolean best) {
         if (stats != null) {
-            LabyModCore.getMinecraft().displayMessageInChat("§7Bester Spieler auf dem Server: §e" + stats.getName());
-            if (stats.getStats().containsKey("rank")) {
+            if (best) {
+                LabyModCore.getMinecraft().displayMessageInChat("§7Ranghöchster Spieler auf dem Server: §e" + stats.getName());
+            } else {
+                LabyModCore.getMinecraft().displayMessageInChat("§7Rangniedrigster Spieler auf dem Server: §e" + stats.getName());
+            }
+            for (String entry : stats.getHumanReadableEntries()) {
+                LabyModCore.getMinecraft().displayMessageInChat("§7" + entry);
+            }
+            /*if (stats.getStats().containsKey("rank")) {
                 LabyModCore.getMinecraft().displayMessageInChat("§7Rang: §e" + stats.getStats().get("rank"));
             }
             if (stats.getStats().containsKey("kills")) {
@@ -62,7 +67,7 @@ public class CommandListener implements MessageSendEvent {
             }
             if (stats.getStats().containsKey("winRate")) {
                 LabyModCore.getMinecraft().displayMessageInChat("§7Siegwahrscheinlichkeit: §e" + stats.getStats().get("winRate") + " %");
-            }
+            }*/
         } else {
             LabyModCore.getMinecraft().displayMessageInChat("§7Es sind keine Statistiken geladen");
         }

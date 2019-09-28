@@ -6,18 +6,20 @@ package de.derrop.labymod.addons.cores;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
-import de.derrop.labymod.addons.cores.clan.ClanDetector;
+import de.derrop.labymod.addons.cores.detector.ScoreboardTagDetector;
+import de.derrop.labymod.addons.cores.detector.ServerDetector;
 import de.derrop.labymod.addons.cores.display.StatisticsDisplay;
+import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.listener.CommandListener;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.module.BestPlayerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
-import de.derrop.labymod.addons.cores.party.PartyDetector;
-import de.derrop.labymod.addons.cores.server.ServerDetector;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
+import de.derrop.labymod.addons.cores.statistics.types.BedWarsStatistics;
+import de.derrop.labymod.addons.cores.statistics.types.CoresStatistics;
 import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
@@ -28,9 +30,10 @@ import net.labymod.settings.elements.SettingsElement;
 import net.labymod.utils.Material;
 import net.minecraft.client.Minecraft;
 
+import javax.swing.*;
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
 
@@ -43,9 +46,11 @@ public class CoresAddon extends LabyModAddon {
 
     private ServerDetector serverDetector = new ServerDetector(this);
     private StatsParser statsParser;
-    private PartyDetector partyDetector = new PartyDetector();
-    private ClanDetector clanDetector = new ClanDetector();
+    private ScoreboardTagDetector scoreboardTagDetector = new ScoreboardTagDetector();
     private String currentServer;
+    private GameType currentServerType;
+
+    private Map<String, GameType> supportedGameTypes = new HashMap<>();
 
     private boolean externalDisplayEnabled;
 
@@ -59,12 +64,8 @@ public class CoresAddon extends LabyModAddon {
         return this.statsParser;
     }
 
-    public ClanDetector getClanDetector() {
-        return clanDetector;
-    }
-
-    public PartyDetector getPartyDetector() {
-        return partyDetector;
+    public ScoreboardTagDetector getScoreboardTagDetector() {
+        return scoreboardTagDetector;
     }
 
     public ScheduledExecutorService getExecutorService() {
@@ -79,6 +80,10 @@ public class CoresAddon extends LabyModAddon {
         return currentServer;
     }
 
+    public GameType getCurrentServerType() {
+        return currentServerType;
+    }
+
     public ModuleCategory getCoresCategory() {
         return coresCategory;
     }
@@ -91,13 +96,36 @@ public class CoresAddon extends LabyModAddon {
         return display;
     }
 
+    public void addSupportedGameType(GameType gameType) {
+        this.supportedGameTypes.put(gameType.getName(), gameType);
+    }
+
+    public GameType getSupportedGameType(String name) {
+        return this.supportedGameTypes.get(name);
+    }
+
+    public boolean isGameTypeSupported(String name) {
+        return this.supportedGameTypes.containsKey(name) && this.supportedGameTypes.get(name).isEnabled();
+    }
+
+    public boolean isCurrentServerTypeSupported() {
+        return this.currentServerType != null && this.currentServerType.isEnabled();
+    }
+
+    public Map<String, GameType> getSupportedGameTypes() {
+        return supportedGameTypes;
+    }
+
     @Override
     public void onEnable() {
-        System.out.println("[CoresStats] Enabling addon...");
+        System.out.println("[GommeStats] Enabling addon...");
+
+        this.addSupportedGameType(new GameType("CORES", CoresStatistics::new, new ControlElement.IconData(Material.BEACON), true));
+        this.addSupportedGameType(new GameType("BW", BedWarsStatistics::new, new ControlElement.IconData(Material.BED), false));
 
         ModuleCategoryRegistry.loadCategory(
                 this.coresCategory = new ModuleCategory(
-                        "Cores",
+                        "Stats",
                         true,
                         new ControlElement.IconData(Material.BEACON)
                 )
@@ -108,15 +136,13 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));
-        this.getApi().getEventManager().register(this.partyDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
         this.getApi().registerModule(new BestPlayerModule(this));
         this.getApi().registerModule(new WorstPlayerModule(this));
         this.getApi().getEventManager().registerOnQuit(serverData -> {
-            this.partyDetector.handleLeaveParty();
             this.statsParser.reset();
-            this.clanDetector.clearCache();
+            this.scoreboardTagDetector.clearCache();
             this.onlinePlayers.clear();
             this.currentServer = null;
             this.display.setVisible(false);
@@ -126,7 +152,7 @@ public class CoresAddon extends LabyModAddon {
 
         this.statsParser = new StatsParser(this, this.executorService);
 
-        System.out.println("[CoresStats] Successfully enabled the addon!");
+        System.out.println("[GommeStats] Successfully enabled the addon!");
     }
 
     public void handleServerSwitch(String serverType) {
@@ -135,17 +161,18 @@ public class CoresAddon extends LabyModAddon {
         this.statsParser.reset();
         this.currentServer = serverType;
 
-        if (serverType.equals("CORES")) {
+        if (this.isGameTypeSupported(serverType)) {
+            this.currentServerType = this.getSupportedGameType(serverType);
             this.executorService.schedule(() -> { //wait for the tablist packets to arrive
                 for (GameProfile profile : this.onlinePlayers.values()) {
                     this.requestPlayerStatsAndWarn(profile.getName());
                 }
             }, 500, TimeUnit.MILLISECONDS);
-
             if (this.externalDisplayEnabled) {
                 this.display.setVisible(true);
             }
         } else {
+            this.currentServerType = null;
             this.display.setVisible(false);
         }
     }
@@ -155,81 +182,41 @@ public class CoresAddon extends LabyModAddon {
                 () -> {
                     try {
                         this.warnOnGoodStats(this.getStatsParser().requestStats(name).get(6, TimeUnit.SECONDS));
-                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                        e.printStackTrace();
+                    } catch (InterruptedException | ExecutionException | TimeoutException exception) {
+                        exception.printStackTrace();
                     }
                 },
                 this.random.nextInt(150) + 50, TimeUnit.MILLISECONDS
         ); //min: 50; max: 200
     }
 
-    public void warnOnGoodStats(PlayerStatistics statistics) {
-        if (statistics == null)
+    private void warnOnGoodStats(PlayerStatistics statistics) {
+        if (statistics == null) {
             return;
+        }
         System.out.println("PlayerStatistics for " + statistics.getName() + ": " + statistics.getStats());
         if (LabyModCore.getMinecraft().getPlayer().getName().equals(statistics.getName())) { //not warning for my good stats
             return;
         }
 
-        if (this.partyDetector.getCurrentPartyMembers().contains(statistics.getName())) { //don't warn when the player is in my party
-            System.out.println("Party contains " + statistics.getName() + ", not warning the player!");
-            return;
-        }
-        String selfClan = this.clanDetector.getSelfClanShortcut();
-        String otherClan = this.clanDetector.getClanShortcut(statistics.getName());
-        if (selfClan != null && selfClan.equals(otherClan)) { //don't warn when the player is in my clan
-            System.out.println("Clan contains " + statistics.getName() + ", not warning the player!");
+        String selfTag = this.scoreboardTagDetector.getSelfScoreboardTag();
+        String otherTag = this.scoreboardTagDetector.getScoreboardTag(statistics.getName());
+        if (selfTag != null && selfTag.equals(otherTag)) { //don't warn when the player is in my clan/party
+            System.out.println("Clan/Party contains " + statistics.getName() + ", not warning the player!");
             return;
         }
 
-        Map<String, String> stats = statistics.getStats();
-        int kills = 0;
-        int deaths = 0;
-        double kd = 0;
-        int rank = 0;
-        double winRate = 0;
-        int playedGames = 0;
-        int wonGames = 0;
-        if (stats.containsKey("kills")) {
-            kills = Integer.parseInt(stats.get("kills"));
-        }
-        if (stats.containsKey("deaths")) {
-            deaths = Integer.parseInt(stats.get("deaths"));
-        }
-        if (stats.containsKey("kd")) {
-            kd = Double.parseDouble(stats.get("kd"));
-        }
-        if (stats.containsKey("rank")) {
-            rank = Integer.parseInt(stats.get("rank"));
-        }
-        if (stats.containsKey("winRate")) {
-            winRate = Double.parseDouble(stats.get("winRate"));
-        }
-        if (stats.containsKey("playedGames")) {
-            playedGames = Integer.parseInt(stats.get("playedGames"));
-        }
-        if (stats.containsKey("wonGames")) {
-            wonGames = Integer.parseInt(stats.get("wonGames"));
-        }
-        if (rank > 0 && rank <= 300) {
-            LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7ist Platz §e" + rank);
-        }
-        if (winRate >= 75 && playedGames >= 30) {
-            LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat eine Siegwahrscheinlichkeit von §e" + winRate + " %" +
-                    " §8(Gespielt: §e" + playedGames + "§8; Gewonnen: §e" + wonGames + "§8)");
-        }
-        if ((rank > 0 && rank <= 100) || (winRate >= 85 && playedGames >= 30) || (playedGames >= 500)) {
+        statistics.warnOnGoodStats(LabyModCore.getMinecraft()::displayMessageInChat, () -> {
             for (int i = 0; i < 5; i++) {
                 Minecraft.getMinecraft().thePlayer.playSound("note.pling", 1000F, 100F); //https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/mapping-and-modding-tutorials/2213619-1-8-all-playsound-sound-arguments
             }
-        }
+        });
     }
 
     public PlayerStatistics getBestPlayer() {
         return this.statsParser.getCachedStats().values().stream()
-                .filter(stats -> stats.getStats().containsKey("rank"))
-                .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
-                .min(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))))
+                .filter(stats -> stats.hasRank() && stats.getRank() > 0)
+                .min(Comparator.comparingInt(PlayerStatistics::getRank))
                 .orElse(null);
     }
 
@@ -243,16 +230,15 @@ public class CoresAddon extends LabyModAddon {
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()
-                .filter(stats -> stats.getStats().containsKey("rank"))
-                .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
-                .max(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))))
+                .filter(stats -> stats.hasRank() && stats.getRank() > 0)
+                .max(Comparator.comparingInt(PlayerStatistics::getRank))
                 .orElse(null);
     }
 
     public Stream<PlayerStatistics> sortStatsStream(Stream<PlayerStatistics> stream) {
-        return stream.filter(stats -> stats.getStats().containsKey("rank"))
-                .filter(stats -> Integer.parseInt(stats.getStats().get("rank")) > 0)
-                .sorted(Comparator.comparingInt(stats -> Integer.parseInt(stats.getStats().get("rank"))));
+        return stream
+                .filter(PlayerStatistics::hasRank)
+                .sorted(Comparator.comparingInt(PlayerStatistics::getRank));
     }
 
     @Override
@@ -263,11 +249,22 @@ public class CoresAddon extends LabyModAddon {
                     getConfig().get("externalDisplay"),
                     Rectangle.class
             );
+            int extendedState = getConfig().has("externalDisplayExtendedState") ?
+                    getConfig().get("externalDisplayExtendedState").getAsInt() :
+                    JFrame.NORMAL;
             if (rectangle != null) {
                 this.display.setBounds(rectangle);
                 if (this.display.isVisible()) {
                     this.display.repaint();
                 }
+                this.display.setExtendedState(extendedState);
+            }
+        }
+        for (GameType gameType : this.supportedGameTypes.values()) {
+            if (getConfig().has(gameType.getName() + "Enabled")) {
+                gameType.setEnabled(getConfig().get(gameType.getName() + "Enabled").getAsBoolean());
+            } else {
+                gameType.setEnabled(gameType.isDefaultEnabled());
             }
         }
     }
@@ -280,10 +277,16 @@ public class CoresAddon extends LabyModAddon {
                             this.externalDisplayEnabled = externalDisplay;
                             if (!this.externalDisplayEnabled) {
                                 this.display.setVisible(false);
-                            } else if (this.currentServer != null && this.currentServer.equals("CORES")) {
+                            } else if (this.isCurrentServerTypeSupported()) {
                                 this.display.setVisible(true);
                             }
                         })
         );
+        for (GameType gameType : this.supportedGameTypes.values()) {
+            subSettings.add(
+                    new BooleanElement(gameType.getName() + " Stats", this, gameType.getIconData(), gameType.getName() + "Enabled", gameType.isDefaultEnabled())
+                            .addCallback(gameType::setEnabled)
+            );
+        }
     }
 }

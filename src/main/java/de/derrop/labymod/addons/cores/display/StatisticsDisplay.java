@@ -25,20 +25,19 @@ public class StatisticsDisplay extends JFrame {
 
     private CoresAddon coresAddon;
 
-    private JPanel container = new JPanel() {
-        @Override
-        protected void paintComponent(Graphics g) {
-            StatisticsDisplay.this.paintComponent(g);
-        }
-    };
-
     public StatisticsDisplay(CoresAddon coresAddon) {
-        super("Cores");
+        super("Stats");
 
         this.coresAddon = coresAddon;
 
 
-        super.add(this.container);
+        JPanel container = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                StatisticsDisplay.this.paintComponent(g);
+            }
+        };
+        super.add(container);
         super.setSize(700, 300);
     }
 
@@ -47,10 +46,11 @@ public class StatisticsDisplay extends JFrame {
         super.repaint();
     }
 
-    public void paintComponent(Graphics graphics) {
+    private void paintComponent(Graphics graphics) {
         new DrawAction(graphics, this.getWidth(), this.getHeight())
                 .draw(this.coresAddon.getStatsParser().getCachedStats().values());
         this.coresAddon.getConfig().add("externalDisplay", this.coresAddon.getGson().toJsonTree(this.getBounds()));
+        this.coresAddon.getConfig().addProperty("externalDisplayExtendedState", this.getExtendedState());
         this.coresAddon.saveConfig();
     }
 
@@ -74,17 +74,16 @@ public class StatisticsDisplay extends JFrame {
         private int x;
         private int y;
 
-        private int width, height;
+        private int width;
 
-        public DrawAction(Graphics graphics, int width, int height) {
+        DrawAction(Graphics graphics, int width, int height) {
             this.graphics = graphics;
             this.x = this.distanceX;
             this.y = this.distanceY;
             this.width = width;
-            this.height = height;
         }
 
-        public void draw(Collection<PlayerStatistics> statistics) {
+        void draw(Collection<PlayerStatistics> statistics) {
             this.graphics.setFont(new Font("Arial", Font.PLAIN, 15));
 
             this.drawString("Spieler online: " + statistics.size());
@@ -101,35 +100,16 @@ public class StatisticsDisplay extends JFrame {
                     Collection<String> texts = new ArrayList<>();
                     texts.add(stats.getName());
                     texts.add(" ");
-                    if (stats.getStats().containsKey("rank")) {
-                        texts.add("Rang: " + stats.getStats().get("rank"));
-                    }
-                    if (stats.getStats().containsKey("winRate")) {
-                        texts.add("Gewinnwahrscheinlichkeit: " + stats.getStats().get("winRate") + " %");
-                    }
-                    if (stats.getStats().containsKey("playedGames")) {
-                        texts.add("Gespielte Spiele: " + stats.getStats().get("playedGames"));
-                    }
-                    if (stats.getStats().containsKey("wonGames")) {
-                        texts.add("Gewonnene Spiele: " + stats.getStats().get("wonGames"));
-                    }
-                    if (stats.getStats().containsKey("kd")) {
-                        texts.add("K/D: " + stats.getStats().get("kd"));
-                    }
-                    if (stats.getStats().containsKey("kills")) {
-                        texts.add("Kills: " + stats.getStats().get("kills"));
-                    }
-                    if (stats.getStats().containsKey("deaths")) {
-                        texts.add("Deaths: " + stats.getStats().get("deaths"));
-                    }
+                    texts.addAll(stats.getHumanReadableEntries());
 
                     Image image = cachedHeads.get(stats.getName());
                     int width = image.getWidth(null);
                     int yDiff = this.distanceY;
                     for (String text : texts) {
                         int textWidth = this.graphics.getFontMetrics().stringWidth(text);
-                        if (textWidth > width)
+                        if (textWidth > width) {
                             width = textWidth;
+                        }
                         yDiff += this.graphics.getFont().getSize() + this.distanceY;
                     }
                     int height = image.getHeight(null) + yDiff;

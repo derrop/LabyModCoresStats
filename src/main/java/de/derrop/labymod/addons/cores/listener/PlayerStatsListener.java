@@ -19,8 +19,8 @@ public class PlayerStatsListener implements MessageReceiveEvent {
     }
 
     @Override
-    public boolean onReceive(String coloredMsg, String msg) {
-        StatsParseResult result = this.coresAddon.getStatsParser().handleChatMessage(msg);
+    public boolean onReceive(String coloredMessage, String message) {
+        StatsParseResult result = this.coresAddon.getStatsParser().handleChatMessage(message);
         if (result == StatsParseResult.END) {
             PlayerStatistics stats = this.coresAddon.getStatsParser().getReadingStats();
             this.coresAddon.getStatsParser().setReadingStats(null);
@@ -33,9 +33,7 @@ public class PlayerStatsListener implements MessageReceiveEvent {
             }
         } else if (result == StatsParseResult.BEGIN || result == StatsParseResult.ENTRY) {
             String name = this.coresAddon.getStatsParser().getReadingStats().getName();
-            if (this.coresAddon.getStatsParser().getStatsRequests().containsKey(name)) {
-                return true;
-            }
+            return this.coresAddon.getStatsParser().getStatsRequests().containsKey(name);
         }
         return false;
     }
