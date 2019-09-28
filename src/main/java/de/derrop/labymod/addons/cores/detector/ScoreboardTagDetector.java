@@ -77,4 +77,14 @@ public class ScoreboardTagDetector {
         return null;
     }
 
+    /**
+     * Checks whether the given string is the tag for parties or not
+     *
+     * @param scoreboardTag the tag to check for from {@link ScoreboardTagDetector#detectScoreboardTag(String)}
+     * @return {@code true} if it is a party or {@code false} if it is a clan or nothing
+     */
+    public boolean isParty(String scoreboardTag) {
+        return scoreboardTag != null && scoreboardTag.equals("§5Party");
+    }
+
 }

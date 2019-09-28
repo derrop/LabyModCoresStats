@@ -14,7 +14,7 @@ public class Patterns {
     public static final Pattern BEGIN_STATS_PATTERN = Pattern.compile("-= Statistiken von (.*) \\(30 Tage\\) =-|-= (.*)'s statistics \\(30 days\\) =-");
 
     //scoreboard
-    public static final Pattern SCOREBOARD_SUFFIX_PATTERN = Pattern.compile("\\[§e(.*)§7]|\\[§5(.*)§7]"); //clan|party
+    public static final Pattern SCOREBOARD_SUFFIX_PATTERN = Pattern.compile("§7 \\[(.*)§7]");
 
     //general
     public static final Pattern PLAYER_JOIN_PATTERN = Pattern.compile("» (.*) hat das Spiel betreten|» (.*) joined the game");
