@@ -15,6 +15,7 @@ import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
 import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.module.BestPlayerModule;
+import de.derrop.labymod.addons.cores.module.TimerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
@@ -54,6 +55,8 @@ public class CoresAddon extends LabyModAddon {
 
     private boolean externalDisplayEnabled;
 
+    private long lastServerSwitch = -1;
+
     private StatisticsDisplay display;
 
     private ModuleCategory coresCategory;
@@ -82,6 +85,10 @@ public class CoresAddon extends LabyModAddon {
 
     public GameType getCurrentServerType() {
         return currentServerType;
+    }
+
+    public long getLastServerSwitch() {
+        return lastServerSwitch;
     }
 
     public ModuleCategory getCoresCategory() {
@@ -140,6 +147,8 @@ public class CoresAddon extends LabyModAddon {
 
         this.getApi().registerModule(new BestPlayerModule(this));
         this.getApi().registerModule(new WorstPlayerModule(this));
+        this.getApi().registerModule(new TimerModule(this));
+
         this.getApi().getEventManager().registerOnQuit(serverData -> {
             this.statsParser.reset();
             this.scoreboardTagDetector.clearCache();
@@ -160,6 +169,7 @@ public class CoresAddon extends LabyModAddon {
 
         this.statsParser.reset();
         this.currentServer = serverType;
+        this.lastServerSwitch = System.currentTimeMillis();
 
         if (this.isGameTypeSupported(serverType)) {
             this.currentServerType = this.getSupportedGameType(serverType);
