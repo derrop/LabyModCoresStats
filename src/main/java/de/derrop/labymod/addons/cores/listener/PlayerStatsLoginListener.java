@@ -25,8 +25,7 @@ public class PlayerStatsLoginListener implements MessageReceiveEvent {
                 String name = Patterns.matcherGroup(matcher);
 
                 if (name != null && !name.equals(LabyModCore.getMinecraft().getPlayer().getName()) &&
-                        this.coresAddon.getCurrentServer() != null &&
-                        this.coresAddon.getCurrentServer().equals("CORES")) {
+                        this.coresAddon.isCurrentServerTypeSupported()) {
                     this.coresAddon.requestPlayerStatsAndWarn(name);
                 }
                 return false;

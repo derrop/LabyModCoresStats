@@ -1,7 +1,7 @@
 {
   "uuid": "%uuid%",
-  "name": "CoresAddon",
+  "name": "GommeStats",
   "mainClass": "de.derrop.labymod.addons.cores.CoresAddon",
-  "author": "derrop",
-  "description": "This addon is a small web server which can show you the statistics of every online player in the current cores game and warn you, if a clan or a player with a rank <= 300 joins"
+  "author": "derrop,Panamo",
+  "description": "This addon is a small web server which can show you the statistics of every online player in the current cores/bedwars game and warn you, if a player with very good stats or a clan joins"
 }
