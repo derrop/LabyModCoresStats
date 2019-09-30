@@ -22,6 +22,7 @@ import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import de.derrop.labymod.addons.cores.detector.MatchDetector;
+import de.derrop.labymod.addons.cores.sync.SyncClient;
 import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
@@ -33,6 +34,7 @@ import net.labymod.utils.Material;
 
 import javax.swing.*;
 import java.awt.*;
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.*;
@@ -40,8 +42,9 @@ import java.util.stream.Stream;
 
 public class CoresAddon extends LabyModAddon {
 
-    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(3);
-    private Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(3);
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final Random random = new Random();
 
     private Map<UUID, GameProfile> onlinePlayers = new HashMap<>();
 
@@ -53,14 +56,13 @@ public class CoresAddon extends LabyModAddon {
     private Map<String, GameType> supportedGameTypes = new HashMap<>();
 
     private boolean externalDisplayEnabled;
+    private StatisticsDisplay display;
 
     private long lastRoundBeginTimestamp = -1;
 
-    private StatisticsDisplay display;
-
     private ModuleCategory coresCategory;
 
-    private final Random random = new Random();
+    private SyncClient syncClient = new SyncClient();
 
     public StatsParser getStatsParser() {
         return this.statsParser;
@@ -96,6 +98,14 @@ public class CoresAddon extends LabyModAddon {
 
     public void setLastRoundBeginTimestamp(long lastRoundBeginTimestamp) {
         this.lastRoundBeginTimestamp = lastRoundBeginTimestamp;
+    }
+
+    public SyncClient getSyncClient() {
+        return syncClient;
+    }
+
+    public MatchDetector getMatchDetector() {
+        return matchDetector;
     }
 
     public ModuleCategory getCoresCategory() {
@@ -136,6 +146,13 @@ public class CoresAddon extends LabyModAddon {
 
         this.addSupportedGameType(new CoresGameType(new ControlElement.IconData(Material.BEACON), true));
         this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
+
+        System.out.println("Trying to connect to the server @gomme.derrop.gq");
+        if (this.syncClient.connect(new InetSocketAddress("192.168.178.47", 1510))) {
+            System.out.println("Successfully connected");
+        } else {
+            System.err.println("Failed to connect");
+        }
 
         ModuleCategoryRegistry.loadCategory(
                 this.coresCategory = new ModuleCategory(

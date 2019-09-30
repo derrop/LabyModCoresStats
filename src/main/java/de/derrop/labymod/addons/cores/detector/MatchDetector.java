@@ -3,14 +3,16 @@ package de.derrop.labymod.addons.cores.detector;
  * Created by derrop on 30.09.2019
  */
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.mojang.authlib.GameProfile;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.regex.Patterns;
 import net.labymod.api.events.MessageReceiveEvent;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.regex.Matcher;
 
 public class MatchDetector implements MessageReceiveEvent {
 
@@ -33,15 +35,38 @@ public class MatchDetector implements MessageReceiveEvent {
 
         this.coresAddon.setLastRoundBeginTimestamp(System.currentTimeMillis());
 
-        //send packet to server
+        if (this.coresAddon.getSyncClient().isConnected()) {
+            JsonObject payload = new JsonObject();
+            JsonArray players = new JsonArray();
+            for (GameProfile value : this.coresAddon.getOnlinePlayers().values()) {
+                players.add(new JsonPrimitive(value.getName()));
+            }
+            payload.add("players", players);
+            payload.addProperty("map", this.currentMap);
+            payload.addProperty("serverType", this.coresAddon.getCurrentServer());
+            payload.addProperty("serverId", this.coresAddon.getCurrentServerId());
+            this.coresAddon.getSyncClient().sendPacket((short) 1, payload);
+        }
     }
 
     public void addPlayerToMatch(String player) {
-        if (this.coresAddon.getCurrentServerId() == null) {
+        if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
             return;
         }
 
-        //send packet to server
+        if (this.coresAddon.getSyncClient().isConnected()) {
+            this.coresAddon.getSyncClient().sendPacket((short) 2, new JsonPrimitive(player));
+        }
+    }
+
+    public void removePlayerFromMatch(String player) {
+        if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
+            return;
+        }
+
+        if (this.coresAddon.getSyncClient().isConnected()) {
+            this.coresAddon.getSyncClient().sendPacket((short) 3, new JsonPrimitive(player));
+        }
     }
 
     public void handleMatchEnd(String winnerTeam) {
@@ -49,7 +74,7 @@ public class MatchDetector implements MessageReceiveEvent {
         System.out.println("This match (map: \"" + this.currentMap + "\") took " + (System.currentTimeMillis() - this.coresAddon.getLastRoundBeginTimestamp()) + " ms");
         this.inMatch = false;
 
-        Collection<String> winners;
+        Collection<String> winners = null;
 
         if (winnerTeam != null) {
             String prefix = Patterns.getScoreboardTeamPrefix(winnerTeam);
@@ -57,11 +82,21 @@ public class MatchDetector implements MessageReceiveEvent {
                 System.err.println("Failed to parse team \"" + winnerTeam + "\", language not supported!");
             }
             winners = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(s -> s.equals(prefix));
-        } else {
-            winners = new ArrayList<>();
         }
 
-        //send packet to server
+        if (this.coresAddon.getSyncClient().isConnected()) {
+            JsonObject payload = new JsonObject();
+            if (winnerTeam != null) {
+                JsonArray winnersArray = new JsonArray();
+                for (String winner : winners) {
+                    winnersArray.add(new JsonPrimitive(winner));
+                }
+                payload.add("winners", winnersArray);
+                payload.addProperty("winnerTeam", winnerTeam);
+            }
+            payload.addProperty("time", System.currentTimeMillis() - this.coresAddon.getLastRoundBeginTimestamp());
+            this.coresAddon.getSyncClient().sendPacket((short) 4, payload);
+        }
     }
 
     @Override

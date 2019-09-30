@@ -23,6 +23,7 @@ public class PlayerLoginLogoutListener implements Consumer<Object> {
             if (packet.func_179768_b() == S38PacketPlayerListItem.Action.ADD_PLAYER) {
                 for (S38PacketPlayerListItem.AddPlayerData addPlayerData : ((S38PacketPlayerListItem) object).func_179767_a()) {
                     this.coresAddon.getOnlinePlayers().put(addPlayerData.getProfile().getId(), addPlayerData.getProfile());
+                    this.coresAddon.getMatchDetector().addPlayerToMatch(addPlayerData.getProfile().getName());
                 }
             } else if (packet.func_179768_b() == S38PacketPlayerListItem.Action.REMOVE_PLAYER) {
                 for (S38PacketPlayerListItem.AddPlayerData addPlayerData : packet.func_179767_a()) {
@@ -31,6 +32,7 @@ public class PlayerLoginLogoutListener implements Consumer<Object> {
                         if (profile != null) {
                             this.coresAddon.getStatsParser().removeFromCache(profile.getName());
                             this.coresAddon.getDisplay().handleStatsUpdate();
+                            this.coresAddon.getMatchDetector().removePlayerFromMatch(profile.getName());
                         }
                     }
                 }
