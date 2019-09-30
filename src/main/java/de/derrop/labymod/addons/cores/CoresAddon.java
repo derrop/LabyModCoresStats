@@ -9,6 +9,8 @@ import com.mojang.authlib.GameProfile;
 import de.derrop.labymod.addons.cores.detector.ScoreboardTagDetector;
 import de.derrop.labymod.addons.cores.detector.ServerDetector;
 import de.derrop.labymod.addons.cores.display.StatisticsDisplay;
+import de.derrop.labymod.addons.cores.gametypes.BedWarsGameType;
+import de.derrop.labymod.addons.cores.gametypes.CoresGameType;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.listener.CommandListener;
 import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
@@ -19,8 +21,7 @@ import de.derrop.labymod.addons.cores.module.TimerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
-import de.derrop.labymod.addons.cores.statistics.types.BedWarsStatistics;
-import de.derrop.labymod.addons.cores.statistics.types.CoresStatistics;
+import de.derrop.labymod.addons.cores.detector.MatchDetector;
 import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
@@ -29,7 +30,6 @@ import net.labymod.settings.elements.BooleanElement;
 import net.labymod.settings.elements.ControlElement;
 import net.labymod.settings.elements.SettingsElement;
 import net.labymod.utils.Material;
-import net.minecraft.client.Minecraft;
 
 import javax.swing.*;
 import java.awt.*;
@@ -48,14 +48,13 @@ public class CoresAddon extends LabyModAddon {
     private ServerDetector serverDetector = new ServerDetector(this);
     private StatsParser statsParser;
     private ScoreboardTagDetector scoreboardTagDetector = new ScoreboardTagDetector();
-    private String currentServer;
-    private GameType currentServerType;
+    private MatchDetector matchDetector = new MatchDetector(this);
 
     private Map<String, GameType> supportedGameTypes = new HashMap<>();
 
     private boolean externalDisplayEnabled;
 
-    private long lastServerSwitch = -1;
+    private long lastRoundBeginTimestamp = -1;
 
     private StatisticsDisplay display;
 
@@ -80,15 +79,23 @@ public class CoresAddon extends LabyModAddon {
     }
 
     public String getCurrentServer() {
-        return currentServer;
+        return this.serverDetector.getCurrentServer();
+    }
+
+    public String getCurrentServerId() {
+        return this.serverDetector.getCurrentServerId();
     }
 
     public GameType getCurrentServerType() {
-        return currentServerType;
+        return this.serverDetector.getCurrentServerType();
     }
 
-    public long getLastServerSwitch() {
-        return lastServerSwitch;
+    public long getLastRoundBeginTimestamp() {
+        return lastRoundBeginTimestamp;
+    }
+
+    public void setLastRoundBeginTimestamp(long lastRoundBeginTimestamp) {
+        this.lastRoundBeginTimestamp = lastRoundBeginTimestamp;
     }
 
     public ModuleCategory getCoresCategory() {
@@ -116,7 +123,7 @@ public class CoresAddon extends LabyModAddon {
     }
 
     public boolean isCurrentServerTypeSupported() {
-        return this.currentServerType != null && this.currentServerType.isEnabled();
+        return this.serverDetector.getCurrentServerType() != null && this.serverDetector.getCurrentServerType().isEnabled();
     }
 
     public Map<String, GameType> getSupportedGameTypes() {
@@ -127,8 +134,8 @@ public class CoresAddon extends LabyModAddon {
     public void onEnable() {
         System.out.println("[GommeStats] Enabling addon...");
 
-        this.addSupportedGameType(new GameType("CORES", CoresStatistics::new, new ControlElement.IconData(Material.BEACON), true));
-        this.addSupportedGameType(new GameType("BW", BedWarsStatistics::new, new ControlElement.IconData(Material.BED), false));
+        this.addSupportedGameType(new CoresGameType(new ControlElement.IconData(Material.BEACON), true));
+        this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
 
         ModuleCategoryRegistry.loadCategory(
                 this.coresCategory = new ModuleCategory(
@@ -143,6 +150,7 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));
+        this.getApi().getEventManager().register(this.matchDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
         this.getApi().registerModule(new BestPlayerModule(this));
@@ -153,7 +161,7 @@ public class CoresAddon extends LabyModAddon {
             this.statsParser.reset();
             this.scoreboardTagDetector.clearCache();
             this.onlinePlayers.clear();
-            this.currentServer = null;
+            this.serverDetector.reset();
             this.display.setVisible(false);
         });
 
@@ -164,15 +172,11 @@ public class CoresAddon extends LabyModAddon {
         System.out.println("[GommeStats] Successfully enabled the addon!");
     }
 
-    public void handleServerSwitch(String serverType) {
-        System.out.println("registered server switch from " + this.currentServer + " to " + serverType);
-
+    public void handleServerSwitch(String serverType, String serverId) {
         this.statsParser.reset();
-        this.currentServer = serverType;
-        this.lastServerSwitch = System.currentTimeMillis();
+        this.lastRoundBeginTimestamp = -1;
 
-        if (this.isGameTypeSupported(serverType)) {
-            this.currentServerType = this.getSupportedGameType(serverType);
+        if (this.isCurrentServerTypeSupported()) {
             this.executorService.schedule(() -> { //wait for the tablist packets to arrive
                 for (GameProfile profile : this.onlinePlayers.values()) {
                     this.requestPlayerStatsAndWarn(profile.getName());
@@ -182,7 +186,6 @@ public class CoresAddon extends LabyModAddon {
                 this.display.setVisible(true);
             }
         } else {
-            this.currentServerType = null;
             this.display.setVisible(false);
         }
     }
@@ -217,9 +220,9 @@ public class CoresAddon extends LabyModAddon {
         }
 
         statistics.warnOnGoodStats(LabyModCore.getMinecraft()::displayMessageInChat, () -> {
-            for (int i = 0; i < 5; i++) {
+            /*for (int i = 0; i < 5; i++) { todo this probably caused the ConcurrentModificationException
                 Minecraft.getMinecraft().thePlayer.playSound("note.pling", 1000F, 100F); //https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/mapping-and-modding-tutorials/2213619-1-8-all-playsound-sound-arguments
-            }
+            }*/
         });
     }
 
@@ -237,6 +240,7 @@ public class CoresAddon extends LabyModAddon {
     //todo #2 higher delay because sometimes we get kicked with "disconnect.spam"
     //todo #3 (maybe) sync stats between clients with a server to not reach the request limit so fast
     //todo #4 icon for the addon (addon.json)
+    //todo #5 when not in party, automatically join the team with the best stats (can be enabled/disabled)
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()

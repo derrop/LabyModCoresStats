@@ -24,9 +24,9 @@ public class TimerModule extends SimpleModule {
 
     @Override
     public String getDisplayValue() {
-        if (this.coresAddon.getLastServerSwitch() == -1)
+        if (this.coresAddon.getLastRoundBeginTimestamp() == -1)
             return null;
-        long milliseconds = System.currentTimeMillis() - this.coresAddon.getLastServerSwitch();
+        long milliseconds = System.currentTimeMillis() - this.coresAddon.getLastRoundBeginTimestamp();
         long seconds = (milliseconds / 1000) % 60;
         long minutes = ((milliseconds / (1000 * 60)) % 60);
         long hours = ((milliseconds / (1000 * 60 * 60)) % 24);
@@ -49,7 +49,7 @@ public class TimerModule extends SimpleModule {
 
     @Override
     public boolean isShown() {
-        return super.isShown() && this.coresAddon.getLastServerSwitch() != -1;
+        return super.isShown() && this.coresAddon.getLastRoundBeginTimestamp() != -1;
     }
 
     @Override

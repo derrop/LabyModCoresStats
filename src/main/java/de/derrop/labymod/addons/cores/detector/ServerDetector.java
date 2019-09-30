@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.gametypes.GameType;
 import io.netty.handler.codec.DecoderException;
 import net.labymod.api.events.PluginMessageEvent;
 import net.minecraft.network.PacketBuffer;
@@ -19,8 +20,30 @@ public class ServerDetector implements PluginMessageEvent {
 
     private CoresAddon coresAddon;
 
+    private String currentServer;
+    private String currentServerId;
+    private GameType currentServerType;
+
     public ServerDetector(CoresAddon coresAddon) {
         this.coresAddon = coresAddon;
+    }
+
+    public GameType getCurrentServerType() {
+        return currentServerType;
+    }
+
+    public String getCurrentServer() {
+        return currentServer;
+    }
+
+    public String getCurrentServerId() {
+        return currentServerId;
+    }
+
+    public void reset() {
+        this.currentServer = null;
+        this.currentServerId = null;
+        this.currentServerType = null;
     }
 
     private String readStringFromBuffer(int maxLength, PacketBuffer packetBuffer) {
@@ -63,7 +86,6 @@ public class ServerDetector implements PluginMessageEvent {
             packetBuffer = new PacketBuffer(packetBuffer.copy(0, packetBuffer.capacity()));
             if (packetBuffer.readableBytes() > 0) {
                 String json = readStringFromBuffer(32767, packetBuffer);
-
                 JsonElement jsonElement = this.jsonParser.parse(json);
                 if (!jsonElement.isJsonObject()) {
                     return;
@@ -73,8 +95,13 @@ public class ServerDetector implements PluginMessageEvent {
                 String action = jsonObject.get("action").getAsString().toUpperCase();
                 JsonObject data = jsonObject.has("data") ? jsonObject.get("data").getAsJsonObject() : null;
                 if (data != null && action.equals("JOIN_SERVER")) {
-                    String cloudType = data.get("cloud_type").getAsString().toUpperCase();
-                    this.coresAddon.handleServerSwitch(cloudType);
+                    String serverType = data.get("cloud_type").getAsString().toUpperCase();
+                    String serverId = data.get("id").getAsString();
+                    System.out.println("registered server switch from " + this.currentServer + " to " + serverType);
+                    this.currentServer = serverType;
+                    this.currentServerId = serverId;
+                    this.currentServerType = this.coresAddon.getSupportedGameType(this.currentServer);
+                    this.coresAddon.handleServerSwitch(serverType, serverId);
                 }
             }
         } catch (Exception error) {

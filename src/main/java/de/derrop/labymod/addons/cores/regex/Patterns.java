@@ -3,10 +3,22 @@ package de.derrop.labymod.addons.cores.regex;
  * Created by derrop on 25.09.2019
  */
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Patterns {
+
+    private static final Map<String, String> TEAM_NAME_TAG_MAP = new HashMap<>();
+
+    static {
+        TEAM_NAME_TAG_MAP.put("Rot", "§cRot §7| §c");
+        TEAM_NAME_TAG_MAP.put("Red", "§cRed §7| §c");
+
+        TEAM_NAME_TAG_MAP.put("Blau", "§9Blau §7| §9");
+        TEAM_NAME_TAG_MAP.put("Blue", "§9Blau §7| §9");
+    }
 
     // -------------- german|english --------------
 
@@ -30,6 +42,10 @@ public class Patterns {
             return secondGroup;
         }
         return null;
+    }
+
+    public static String getScoreboardTeamPrefix(String teamName) {
+        return TEAM_NAME_TAG_MAP.get(teamName);
     }
 
 }

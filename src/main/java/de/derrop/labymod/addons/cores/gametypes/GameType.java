@@ -8,7 +8,7 @@ import net.labymod.settings.elements.ControlElement;
 
 import java.util.function.Function;
 
-public class GameType {
+public abstract class GameType {
 
     private String name;
     private Function<String, PlayerStatistics> statisticsProvider;
@@ -46,6 +46,14 @@ public class GameType {
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
+
+    public abstract boolean matchesBeginMessage(String message);
+
+    public abstract boolean matchesEndMessage(String message);
+
+    public abstract String parseWinnerFromMessage(String message);
+
+    public abstract String parseMapFromMessage(String message);
 
     @Override
     public String toString() {

@@ -8,8 +8,11 @@ import net.labymod.core.LabyModCore;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 
 public class ScoreboardTagDetector {
@@ -75,6 +78,25 @@ public class ScoreboardTagDetector {
             }
         }
         return null;
+    }
+
+    /**
+     * Detects the players that have the given prefix
+     *
+     * @param prefixTester the prefix to check for
+     * @return a collection containing all player names that have the given prefix in our scoreboard
+     */
+    public Collection<String> getPlayersWithPrefix(Predicate<String> prefixTester) {
+        Collection<String> players = new ArrayList<>();
+        Scoreboard scoreboard = LabyModCore.getMinecraft().getWorld().getScoreboard();
+        if (scoreboard != null) {
+            for (ScorePlayerTeam team : scoreboard.getTeams()) {
+                if (prefixTester.test(team.getColorPrefix())) {
+                    players.addAll(team.getMembershipCollection());
+                }
+            }
+        }
+        return players;
     }
 
     /**

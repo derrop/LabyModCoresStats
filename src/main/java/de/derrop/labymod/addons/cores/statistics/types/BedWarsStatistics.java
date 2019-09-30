@@ -133,7 +133,7 @@ public class BedWarsStatistics extends SimplePatternPlayerStatistics {
             outputConsumer.accept("§4WARNUNG: §7Spieler §e" + super.getName() + " §7hat eine Siegwahrscheinlichkeit von §e" + String.format("%.2f", winRate) + " %" +
                     " §8(Gespielt: §e" + this.playedGames + "§8; Gewonnen: §e" + this.wonGames + "§8)");
         }
-        if ((this.rank > 0 && this.rank <= 100) || (winRate >= 85 && this.playedGames >= 30) || (this.playedGames >= 500)) {
+        if ((this.rank > 0 && this.rank <= 100) || (winRate >= 85 && this.playedGames >= 50) || (this.playedGames >= 500)) {
             warnSoundHandler.run();
         }
     }
