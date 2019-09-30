@@ -147,12 +147,12 @@ public class CoresAddon extends LabyModAddon {
         this.addSupportedGameType(new CoresGameType(new ControlElement.IconData(Material.BEACON), true));
         this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
 
-        System.out.println("Trying to connect to the server @gomme.derrop.gq");
+        /*System.out.println("Trying to connect to the server @gomme.derrop.gq");
         if (this.syncClient.connect(new InetSocketAddress("192.168.178.47", 1510))) {
             System.out.println("Successfully connected");
         } else {
             System.err.println("Failed to connect");
-        }
+        }*/
 
         ModuleCategoryRegistry.loadCategory(
                 this.coresCategory = new ModuleCategory(
