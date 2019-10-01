@@ -3,11 +3,13 @@ package de.derrop.labymod.addons.cores.listener;
  * Created by derrop on 22.09.2019
  */
 
+import com.google.gson.JsonObject;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParseResult;
 import net.labymod.api.events.MessageReceiveEvent;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class PlayerStatsListener implements MessageReceiveEvent {
@@ -28,6 +30,19 @@ public class PlayerStatsListener implements MessageReceiveEvent {
             if (future != null) {
                 this.coresAddon.getStatsParser().getStatsRequests().remove(stats.getName());
                 this.coresAddon.getDisplay().handleStatsUpdate();
+                if (this.coresAddon.getSyncClient().isConnected()) {
+                    JsonObject jsonObject = new JsonObject();
+
+                    this.coresAddon.getOnlinePlayers().entrySet().stream()
+                            .filter(entry -> entry.getValue().getName().equals(stats.getName()))
+                            .findFirst()
+                            .ifPresent(entry -> jsonObject.addProperty("uniqueId", entry.getKey().toString()));
+
+                    jsonObject.addProperty("name", stats.getName());
+                    jsonObject.addProperty("gamemode", stats.getGameType());
+                    jsonObject.add("stats", this.coresAddon.getGson().toJsonTree(stats.getStats()));
+                    this.coresAddon.getSyncClient().sendPacket((short) 4, jsonObject);
+                }
                 future.complete(stats);
                 return true;
             }

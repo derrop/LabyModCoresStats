@@ -49,26 +49,6 @@ public class MatchDetector implements MessageReceiveEvent {
         }
     }
 
-    public void addPlayerToMatch(String player) {
-        if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
-            return;
-        }
-
-        if (this.coresAddon.getSyncClient().isConnected()) {
-            this.coresAddon.getSyncClient().sendPacket((short) 2, new JsonPrimitive(player));
-        }
-    }
-
-    public void removePlayerFromMatch(String player) {
-        if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
-            return;
-        }
-
-        if (this.coresAddon.getSyncClient().isConnected()) {
-            this.coresAddon.getSyncClient().sendPacket((short) 3, new JsonPrimitive(player));
-        }
-    }
-
     public void handleMatchEnd(String winnerTeam) {
         System.out.println("Detected match end");
         System.out.println("This match (map: \"" + this.currentMap + "\") took " + (System.currentTimeMillis() - this.coresAddon.getLastRoundBeginTimestamp()) + " ms");
@@ -82,6 +62,7 @@ public class MatchDetector implements MessageReceiveEvent {
                 System.err.println("Failed to parse team \"" + winnerTeam + "\", language not supported!");
             }
             winners = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(s -> s.equals(prefix));
+            System.out.println("Winners: " + winners + " [Team " + winnerTeam + "]");
         }
 
         if (this.coresAddon.getSyncClient().isConnected()) {
@@ -92,10 +73,18 @@ public class MatchDetector implements MessageReceiveEvent {
                     winnersArray.add(new JsonPrimitive(winner));
                 }
                 payload.add("winners", winnersArray);
-                payload.addProperty("winnerTeam", winnerTeam);
             }
-            payload.addProperty("time", System.currentTimeMillis() - this.coresAddon.getLastRoundBeginTimestamp());
-            this.coresAddon.getSyncClient().sendPacket((short) 4, payload);
+            this.coresAddon.getSyncClient().sendPacket((short) 2, payload);
+        }
+    }
+
+    public void removePlayerFromMatch(String player) {
+        if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
+            return;
+        }
+
+        if (this.coresAddon.getSyncClient().isConnected()) {
+            this.coresAddon.getSyncClient().sendPacket((short) 3, new JsonPrimitive(player));
         }
     }
 
