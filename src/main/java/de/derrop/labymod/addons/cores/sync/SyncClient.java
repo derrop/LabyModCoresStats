@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-public class SyncClient {
+public class SyncClient implements AutoCloseable {
 
     private final JsonParser jsonParser = new JsonParser();
 
@@ -40,7 +40,7 @@ public class SyncClient {
         return this.channel != null && this.channel.isOpen();
     }
 
-    public void sendPacket(short packetId, JsonElement payload) {
+    public void sendPacket(short packetId, JsonElement payload) { //todo sometimes two or more packets are "merged" and therefore cannot be parsed
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("id", packetId);
         jsonObject.add("payload", payload);
@@ -71,6 +71,11 @@ public class SyncClient {
         authPayload.addProperty("name", Minecraft.getMinecraft().getSession().getProfile().getName());
         JsonElement response = this.sendQuery((short) 0, authPayload, null); //todo add good auth
         return response.getAsBoolean();
+    }
+
+    @Override
+    public void close() {
+        this.channel.close().syncUninterruptibly();
     }
 
     public JsonElement sendQuery(short packetId, JsonElement payload, JsonElement defResponse) {

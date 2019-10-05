@@ -18,7 +18,7 @@ public class CoresGameType extends GameType {
     private static final Pattern MATCH_END_PATTERN = Pattern.compile("\\[.*] Du bist nun Zuschauer!"); //todo english
 
     public CoresGameType(ControlElement.IconData iconData, boolean defaultEnabled) {
-        super("CORES", CoresStatistics::new, iconData, defaultEnabled);
+        super("CORES", CoresStatistics::new, iconData, "blocks/beacon", defaultEnabled);
     }
 
     @Override

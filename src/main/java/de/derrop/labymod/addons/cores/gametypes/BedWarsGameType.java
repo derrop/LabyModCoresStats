@@ -17,7 +17,7 @@ public class BedWarsGameType extends GameType {
     private static final Pattern MATCH_END_PATTERN = Pattern.compile("\\[.*] Du bist nun Zuschauer!"); //todo english
 
     public BedWarsGameType(ControlElement.IconData iconData, boolean defaultEnabled) {
-        super("BW", BedWarsStatistics::new, iconData, defaultEnabled);
+        super("BW", BedWarsStatistics::new, iconData, "items/bed", defaultEnabled);
     }
 
     @Override

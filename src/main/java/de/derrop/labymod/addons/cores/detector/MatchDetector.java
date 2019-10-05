@@ -20,9 +20,14 @@ public class MatchDetector implements MessageReceiveEvent {
 
     private String currentMap;
     private boolean inMatch;
+    private GameType currentMatchGameType;
 
     public MatchDetector(CoresAddon coresAddon) {
         this.coresAddon = coresAddon;
+    }
+
+    public boolean isInMatch() {
+        return inMatch;
     }
 
     public String getCurrentMap() {
@@ -32,6 +37,7 @@ public class MatchDetector implements MessageReceiveEvent {
     public void handleMatchBegin() {
         System.out.println("Detected match begin on map \"" + this.currentMap + "\"");
         this.inMatch = true;
+        this.currentMatchGameType = this.coresAddon.getCurrentServerType();
 
         this.coresAddon.setLastRoundBeginTimestamp(System.currentTimeMillis());
 
@@ -45,6 +51,7 @@ public class MatchDetector implements MessageReceiveEvent {
             payload.addProperty("map", this.currentMap);
             payload.addProperty("serverType", this.coresAddon.getCurrentServer());
             payload.addProperty("serverId", this.coresAddon.getCurrentServerId());
+            payload.addProperty("texturePath", this.coresAddon.getCurrentServerType().getMinecraftTexturePath());
             this.coresAddon.getSyncClient().sendPacket((short) 1, payload);
         }
     }
@@ -74,8 +81,11 @@ public class MatchDetector implements MessageReceiveEvent {
                 }
                 payload.add("winners", winnersArray);
             }
+            payload.addProperty("texturePath", this.currentMatchGameType.getMinecraftTexturePath());
             this.coresAddon.getSyncClient().sendPacket((short) 2, payload);
         }
+
+        this.currentMatchGameType = null;
     }
 
     public void removePlayerFromMatch(String player) {

@@ -147,12 +147,12 @@ public class CoresAddon extends LabyModAddon {
         this.addSupportedGameType(new CoresGameType(new ControlElement.IconData(Material.BEACON), true));
         this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
 
-        /*System.out.println("Trying to connect to the server @gomme.derrop.gq");
-        if (this.syncClient.connect(new InetSocketAddress("192.168.178.47", 1510))) {
+        System.out.println("Trying to connect to the server @internal.gomme.derrop.gq");
+        if (this.syncClient.connect(new InetSocketAddress("213.185.67.101", 1510))) {
             System.out.println("Successfully connected");
         } else {
             System.err.println("Failed to connect");
-        }*/
+        }
 
         ModuleCategoryRegistry.loadCategory(
                 this.coresCategory = new ModuleCategory(
@@ -180,7 +180,12 @@ public class CoresAddon extends LabyModAddon {
             this.onlinePlayers.clear();
             this.serverDetector.reset();
             this.display.setVisible(false);
+
+            if (this.matchDetector.isInMatch()) {
+                this.matchDetector.handleMatchEnd(null);
+            }
         });
+        //todo bug: winners contain the nick if a player is nicked
 
         this.getApi().getEventManager().register(this.serverDetector);
 
@@ -189,9 +194,19 @@ public class CoresAddon extends LabyModAddon {
         System.out.println("[GommeStats] Successfully enabled the addon!");
     }
 
+    @Override
+    public void onDisable() {
+        if (this.syncClient != null && this.syncClient.isConnected()) {
+            this.syncClient.close();
+        }
+    }
+
     public void handleServerSwitch(String serverType, String serverId) {
         this.statsParser.reset();
         this.lastRoundBeginTimestamp = -1;
+        if (this.matchDetector.isInMatch()) {
+            this.matchDetector.handleMatchEnd(null);
+        }
 
         if (this.isCurrentServerTypeSupported()) {
             this.executorService.schedule(() -> { //wait for the tablist packets to arrive
@@ -210,6 +225,7 @@ public class CoresAddon extends LabyModAddon {
     public void requestPlayerStatsAndWarn(String name) {
         this.executorService.schedule(
                 () -> {
+                    System.out.println("Stats parsing: " + name);
                     try {
                         this.warnOnGoodStats(this.getStatsParser().requestStats(name).get(6, TimeUnit.SECONDS));
                     } catch (InterruptedException | ExecutionException | TimeoutException exception) {
