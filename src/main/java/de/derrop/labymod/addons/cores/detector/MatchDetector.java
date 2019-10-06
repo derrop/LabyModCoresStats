@@ -88,7 +88,7 @@ public class MatchDetector implements MessageReceiveEvent {
         this.currentMatchGameType = null;
     }
 
-    public void removePlayerFromMatch(String player) {
+    public void removePlayerFromMatch(String player) { //todo bug: this is called when a player dies
         if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
             return;
         }

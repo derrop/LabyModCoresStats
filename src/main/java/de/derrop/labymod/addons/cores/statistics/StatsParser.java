@@ -125,7 +125,7 @@ public class StatsParser {
             return StatsParseResult.NONE;
         }
         if (message.equals("Du hast zu viele Statistiken abgerufen, bitte versuche es in einer anderen Runde erneut.") || //german
-                message.equals("")) { //todo english
+                message.equals("You have retrieved too many statistics, please try again in another game.")) { //english
             //Gomme hates us :peepoCry:
             for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
                 value.complete(null);

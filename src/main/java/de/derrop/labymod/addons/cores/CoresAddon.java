@@ -185,7 +185,6 @@ public class CoresAddon extends LabyModAddon {
                 this.matchDetector.handleMatchEnd(null);
             }
         });
-        //todo bug: winners contain the nick if a player is nicked
 
         this.getApi().getEventManager().register(this.serverDetector);
 
@@ -274,6 +273,9 @@ public class CoresAddon extends LabyModAddon {
     //todo #3 (maybe) sync stats between clients with a server to not reach the request limit so fast
     //todo #4 icon for the addon (addon.json)
     //todo #5 when not in party, automatically join the team with the best stats (can be enabled/disabled)
+
+    //todo bug: winners contain the nick if a player is nicked
+    //todo bug: players are recognized as "disconnected" when they die because they are removed from the tab list after their death and directly added after it
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()
