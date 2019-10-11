@@ -18,10 +18,7 @@ import io.netty.handler.codec.string.StringEncoder;
 import net.minecraft.client.Minecraft;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
@@ -47,10 +44,12 @@ public class SyncClient implements AutoCloseable {
         this.channel.writeAndFlush(jsonObject.toString()).syncUninterruptibly();
     }
 
-    public boolean connect(InetSocketAddress host) {
+    public boolean connect(InetSocketAddress host, String authToken, Consumer<String> errorHandler) {
         if (this.channel != null) {
             this.channel.close().syncUninterruptibly();
         }
+
+        System.out.println("Trying to connect to the server @internal.gomme.derrop.gq");
 
         this.channel = new Bootstrap()
                 .group(this.eventLoopGroup)
@@ -69,8 +68,18 @@ public class SyncClient implements AutoCloseable {
         JsonObject authPayload = new JsonObject();
         authPayload.addProperty("uniqueId", Minecraft.getMinecraft().getSession().getProfile().getId().toString());
         authPayload.addProperty("name", Minecraft.getMinecraft().getSession().getProfile().getName());
-        JsonElement response = this.sendQuery((short) 0, authPayload, null); //todo add good auth
-        return response.getAsBoolean();
+        authPayload.addProperty("token", authToken);
+        JsonObject response = this.sendQuery((short) 0, authPayload, null).getAsJsonObject();
+        if (response.get("success").getAsBoolean()) {
+            System.out.println("Successfully connected");
+            return true;
+        } else {
+            System.err.println("Failed to connect: " + response.get("error").getAsString());
+            if (errorHandler != null) {
+                errorHandler.accept(response.get("error").getAsString());
+            }
+            return false;
+        }
     }
 
     @Override

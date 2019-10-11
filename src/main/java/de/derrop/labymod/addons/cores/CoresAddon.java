@@ -30,9 +30,11 @@ import net.labymod.core.ChatComponent;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.ModuleCategoryRegistry;
+import net.labymod.main.LabyMod;
 import net.labymod.settings.elements.BooleanElement;
 import net.labymod.settings.elements.ControlElement;
 import net.labymod.settings.elements.SettingsElement;
+import net.labymod.settings.elements.StringElement;
 import net.labymod.utils.Material;
 
 import javax.swing.*;
@@ -67,6 +69,8 @@ public class CoresAddon extends LabyModAddon {
 
     private SyncClient syncClient = new SyncClient();
     private TagProvider tagProvider = new TagProvider(this);
+
+    private String authToken;
 
     public TagProvider getTagProvider() {
         return tagProvider;
@@ -155,11 +159,8 @@ public class CoresAddon extends LabyModAddon {
         this.addSupportedGameType(new CoresGameType(new ControlElement.IconData(Material.BEACON), true));
         this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
 
-        System.out.println("Trying to connect to the server @internal.gomme.derrop.gq");
-        if (this.syncClient.connect(new InetSocketAddress("internal.gomme.derrop.gq", 1510))) {
-            System.out.println("Successfully connected");
-        } else {
-            System.err.println("Failed to connect");
+        if (this.authToken != null && !this.authToken.isEmpty()) {
+            this.connectToSyncServer();
         }
 
         ModuleCategoryRegistry.loadCategory(
@@ -206,6 +207,14 @@ public class CoresAddon extends LabyModAddon {
         if (this.syncClient != null && this.syncClient.isConnected()) {
             this.syncClient.close();
         }
+    }
+
+    private void connectToSyncServer() {
+        this.syncClient.connect(
+                new InetSocketAddress("internal.gomme.derrop.gq", 1510),
+                this.authToken,
+                error -> LabyMod.getInstance().notifyMessageRaw("Cannot connect to stats server!", error)
+        );
     }
 
     public void handleServerSwitch(String serverType, String serverId) {
@@ -260,13 +269,13 @@ public class CoresAddon extends LabyModAddon {
 
         if (!this.scoreboardTagDetector.isParty(otherTag)) {
             this.tagProvider.listTags(TagType.CLAN, otherTag.substring(2) /* Remove the color code at the beginning */).thenAccept(tags -> {
-                if (!tags.isEmpty()) {
+                if (tags != null && !tags.isEmpty()) {
                     LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Clan §e" + otherTag + " §7hat die Tags §e" + String.join(", ", tags));
                 }
             });
         }
         this.tagProvider.listTags(TagType.PLAYER, statistics.getName()).thenAccept(tags -> {
-            if (!tags.isEmpty()) {
+            if (tags != null && !tags.isEmpty()) {
                 LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat die Tags §e" + String.join(", ", tags));
             }
         });
@@ -336,10 +345,24 @@ public class CoresAddon extends LabyModAddon {
                 gameType.setEnabled(gameType.isDefaultEnabled());
             }
         }
+        this.authToken = getConfig().has("token") ? getConfig().get("token").getAsString() : null;
     }
 
     @Override
     protected void fillSettings(List<SettingsElement> subSettings) {
+        subSettings.add(
+                new StringElement("Token", this, new ControlElement.IconData(Material.DIAMOND_SWORD), "token", "")
+                .addCallback(token -> {
+                    this.authToken = token;
+                    if (token != null && !token.isEmpty()) {
+                        if (this.syncClient.isConnected()) {
+                            this.syncClient.close();
+                        }
+                        this.connectToSyncServer();
+                    }
+                })
+        );
+
         subSettings.add(
                 new BooleanElement("External Display", this, new ControlElement.IconData(Material.SIGN), "externalDisplayEnabled", false)
                         .addCallback(externalDisplay -> {

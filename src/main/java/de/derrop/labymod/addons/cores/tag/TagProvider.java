@@ -25,7 +25,7 @@ public class TagProvider {
 
     public CompletableFuture<Collection<String>> listTags(TagType tagType, String name) {
         if (!this.isUseable()) {
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
         JsonObject payload = new JsonObject();
         payload.addProperty("type", tagType.toString());
@@ -48,7 +48,7 @@ public class TagProvider {
 
     public CompletableFuture<Boolean> addTag(TagType tagType, String name, String tag) {
         if (!this.isUseable()) {
-            return null;
+            return CompletableFuture.completedFuture(false);
         }
         JsonObject payload = new JsonObject();
         payload.addProperty("type", tagType.toString());

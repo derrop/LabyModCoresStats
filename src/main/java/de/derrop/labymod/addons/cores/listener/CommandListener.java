@@ -34,24 +34,36 @@ public class CommandListener implements MessageSendEvent {
         } else if (args[0].equalsIgnoreCase("ctag") || args[0].equalsIgnoreCase("utag")) {
             TagType tagType = args[0].equalsIgnoreCase("ctag") ? TagType.CLAN : TagType.PLAYER;
             if (args.length == 4 && args[1].equalsIgnoreCase("add")) {
-                this.coresAddon.getTagProvider().addTag(tagType, args[2], args[3]).thenAccept(success -> {
-                    if (success) {
-                        LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich hinzugefügt");
-                    } else {
-                        LabyModCore.getMinecraft().displayMessageInChat("§cDieser User besitzt den Tag §e\"" + args[3] + "\" §cbereits");
-                    }
-                });
+                if (this.coresAddon.getTagProvider().isUseable()) {
+                    this.coresAddon.getTagProvider().addTag(tagType, args[2], args[3]).thenAccept(success -> {
+                        if (success) {
+                            LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich hinzugefügt");
+                        } else {
+                            LabyModCore.getMinecraft().displayMessageInChat("§cDieser User besitzt den Tag §e\"" + args[3] + "\" §cbereits");
+                        }
+                    });
+                } else {
+                    LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
+                }
             } else if (args.length == 4 && args[1].equalsIgnoreCase("remove")) {
-                this.coresAddon.getTagProvider().removeTag(tagType, args[2], args[3]);
-                LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich entfernt");
+                if (this.coresAddon.getTagProvider().isUseable()) {
+                    this.coresAddon.getTagProvider().removeTag(tagType, args[2], args[3]);
+                    LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich entfernt");
+                } else {
+                    LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
+                }
             } else if (args.length == 3 && args[1].equalsIgnoreCase("list")) {
-                this.coresAddon.getTagProvider().listTags(tagType, args[2]).thenAccept(tags -> {
-                    if (tags.isEmpty()) {
-                        LabyModCore.getMinecraft().displayMessageInChat("§cKeine Tags für den User §e\"" + args[2] + "\" §cgefunden");
-                    } else {
-                        LabyModCore.getMinecraft().displayMessageInChat("§aTags des Users §e\"" + args[2] + "\"§a: §e" + String.join(", ", tags));
-                    }
-                });
+                if (this.coresAddon.getTagProvider().isUseable()) {
+                    this.coresAddon.getTagProvider().listTags(tagType, args[2]).thenAccept(tags -> {
+                        if (tags == null || tags.isEmpty()) {
+                            LabyModCore.getMinecraft().displayMessageInChat("§cKeine Tags für den User §e\"" + args[2] + "\" §cgefunden");
+                        } else {
+                            LabyModCore.getMinecraft().displayMessageInChat("§aTags des Users §e\"" + args[2] + "\"§a: §e" + String.join(", ", tags));
+                        }
+                    });
+                } else {
+                    LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
+                }
             } else {
                 LabyModCore.getMinecraft().displayMessageInChat("§e!" + args[0] + " add <name> <tag>");
                 LabyModCore.getMinecraft().displayMessageInChat("§e!" + args[0] + " remove <name> <tag>");
