@@ -5,6 +5,7 @@ package de.derrop.labymod.addons.cores.listener;
 
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
+import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.events.MessageSendEvent;
 import net.labymod.core.LabyModCore;
 
@@ -30,6 +31,37 @@ public class CommandListener implements MessageSendEvent {
             this.displayStatistics(this.coresAddon.getBestPlayer(), true);
         } else if (args[0].equalsIgnoreCase("worstStats")) {
             this.displayStatistics(this.coresAddon.getWorstPlayer(), false);
+        } else if (args[0].equalsIgnoreCase("ctag") || args[0].equalsIgnoreCase("utag")) {
+            TagType tagType = args[0].equalsIgnoreCase("ctag") ? TagType.CLAN : TagType.PLAYER;
+            if (args.length == 4 && args[1].equalsIgnoreCase("add")) {
+                this.coresAddon.getTagProvider().addTag(tagType, args[2], args[3]).thenAccept(success -> {
+                    if (success) {
+                        LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich hinzugefügt");
+                    } else {
+                        LabyModCore.getMinecraft().displayMessageInChat("§cDieser User besitzt den Tag §e\"" + args[3] + "\" §cbereits");
+                    }
+                });
+            } else if (args.length == 4 && args[1].equalsIgnoreCase("remove")) {
+                this.coresAddon.getTagProvider().removeTag(tagType, args[2], args[3]);
+                LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich entfernt");
+            } else if (args.length == 3 && args[1].equalsIgnoreCase("list")) {
+                this.coresAddon.getTagProvider().listTags(tagType, args[2]).thenAccept(tags -> {
+                    if (tags.isEmpty()) {
+                        LabyModCore.getMinecraft().displayMessageInChat("§cKeine Tags für den User §e\"" + args[2] + "\" §cgefunden");
+                    } else {
+                        LabyModCore.getMinecraft().displayMessageInChat("§aTags des Users §e\"" + args[2] + "\"§a: §e" + String.join(", ", tags));
+                    }
+                });
+            } else {
+                LabyModCore.getMinecraft().displayMessageInChat("§e!" + args[0] + " add <name> <tag>");
+                LabyModCore.getMinecraft().displayMessageInChat("§e!" + args[0] + " remove <name> <tag>");
+                LabyModCore.getMinecraft().displayMessageInChat("§e!" + args[0] + " list <name>");
+            }
+        } else if (args[0].equalsIgnoreCase("help")) {
+            LabyModCore.getMinecraft().displayMessageInChat("§e!bestStats §8| §7display the statistics of the player with the highest rank in the current round");
+            LabyModCore.getMinecraft().displayMessageInChat("§e!worstStats §8| §7display the statistics of the player with the lowest rank in the current round");
+            LabyModCore.getMinecraft().displayMessageInChat("§e!ctag add/remove/list <clanTag> <tag> §8| §7add/remove/list the tags of a clan");
+            LabyModCore.getMinecraft().displayMessageInChat("§e!utag add/remove/list <name> <tag> §8| §7add/remove/list the tags of a player");
         }
         return true;
     }
@@ -44,30 +76,6 @@ public class CommandListener implements MessageSendEvent {
             for (String entry : stats.getHumanReadableEntries()) {
                 LabyModCore.getMinecraft().displayMessageInChat("§7" + entry);
             }
-            /*if (stats.getStats().containsKey("rank")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Rang: §e" + stats.getStats().get("rank"));
-            }
-            if (stats.getStats().containsKey("kills")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Kills: §e" + stats.getStats().get("kills"));
-            }
-            if (stats.getStats().containsKey("deaths")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Deaths: §e" + stats.getStats().get("deaths"));
-            }
-            if (stats.getStats().containsKey("kd")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7K/D: §e" + stats.getStats().get("kd"));
-            }
-            if (stats.getStats().containsKey("destroyedCores")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Zerstörte Cores: §e" + stats.getStats().get("destroyedCores"));
-            }
-            if (stats.getStats().containsKey("playedGames")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Gespielte Spiele: §e" + stats.getStats().get("playedGames"));
-            }
-            if (stats.getStats().containsKey("wonGames")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Gewonnene Spiele: §e" + stats.getStats().get("wonGames"));
-            }
-            if (stats.getStats().containsKey("winRate")) {
-                LabyModCore.getMinecraft().displayMessageInChat("§7Siegwahrscheinlichkeit: §e" + stats.getStats().get("winRate") + " %");
-            }*/
         } else {
             LabyModCore.getMinecraft().displayMessageInChat("§7Es sind keine Statistiken geladen");
         }

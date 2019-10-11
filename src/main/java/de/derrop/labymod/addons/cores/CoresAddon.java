@@ -23,7 +23,10 @@ import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import de.derrop.labymod.addons.cores.detector.MatchDetector;
 import de.derrop.labymod.addons.cores.sync.SyncClient;
+import de.derrop.labymod.addons.cores.tag.TagProvider;
+import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.LabyModAddon;
+import net.labymod.core.ChatComponent;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.ModuleCategoryRegistry;
@@ -63,6 +66,11 @@ public class CoresAddon extends LabyModAddon {
     private ModuleCategory coresCategory;
 
     private SyncClient syncClient = new SyncClient();
+    private TagProvider tagProvider = new TagProvider(this);
+
+    public TagProvider getTagProvider() {
+        return tagProvider;
+    }
 
     public StatsParser getStatsParser() {
         return this.statsParser;
@@ -148,7 +156,7 @@ public class CoresAddon extends LabyModAddon {
         this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
 
         System.out.println("Trying to connect to the server @internal.gomme.derrop.gq");
-        if (this.syncClient.connect(new InetSocketAddress("213.185.67.101", 1510))) {
+        if (this.syncClient.connect(new InetSocketAddress("internal.gomme.derrop.gq", 1510))) {
             System.out.println("Successfully connected");
         } else {
             System.err.println("Failed to connect");
@@ -224,7 +232,6 @@ public class CoresAddon extends LabyModAddon {
     public void requestPlayerStatsAndWarn(String name) {
         this.executorService.schedule(
                 () -> {
-                    System.out.println("Stats parsing: " + name);
                     try {
                         this.warnOnGoodStats(this.getStatsParser().requestStats(name).get(6, TimeUnit.SECONDS));
                     } catch (InterruptedException | ExecutionException | TimeoutException exception) {
@@ -251,6 +258,19 @@ public class CoresAddon extends LabyModAddon {
             return;
         }
 
+        if (!this.scoreboardTagDetector.isParty(otherTag)) {
+            this.tagProvider.listTags(TagType.CLAN, otherTag.substring(2) /* Remove the color code at the beginning */).thenAccept(tags -> {
+                if (!tags.isEmpty()) {
+                    LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Clan §e" + otherTag + " §7hat die Tags §e" + String.join(", ", tags));
+                }
+            });
+        }
+        this.tagProvider.listTags(TagType.PLAYER, statistics.getName()).thenAccept(tags -> {
+            if (!tags.isEmpty()) {
+                LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat die Tags §e" + String.join(", ", tags));
+            }
+        });
+
         statistics.warnOnGoodStats(LabyModCore.getMinecraft()::displayMessageInChat, () -> {
             /*for (int i = 0; i < 5; i++) { todo this probably caused the ConcurrentModificationException
                 Minecraft.getMinecraft().thePlayer.playSound("note.pling", 1000F, 100F); //https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/mapping-and-modding-tutorials/2213619-1-8-all-playsound-sound-arguments
@@ -275,7 +295,7 @@ public class CoresAddon extends LabyModAddon {
     //todo #5 when not in party, automatically join the team with the best stats (can be enabled/disabled)
 
     //todo bug: winners contain the nick if a player is nicked
-    //todo bug: players are recognized as "disconnected" when they die because they are removed from the tab list after their death and directly added after it
+    //todo bug: players are recognized as "disconnected" when they die because they are removed from the tab list after their death and directly added after it in BEDWARS
 
     public PlayerStatistics getWorstPlayer() {
         return this.statsParser.getCachedStats().values().stream()
