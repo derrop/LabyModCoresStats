@@ -6,6 +6,7 @@ package de.derrop.labymod.addons.cores;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
+import de.derrop.labymod.addons.cores.detector.MatchDetector;
 import de.derrop.labymod.addons.cores.detector.ScoreboardTagDetector;
 import de.derrop.labymod.addons.cores.detector.ServerDetector;
 import de.derrop.labymod.addons.cores.display.StatisticsDisplay;
@@ -21,12 +22,10 @@ import de.derrop.labymod.addons.cores.module.TimerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
-import de.derrop.labymod.addons.cores.detector.MatchDetector;
 import de.derrop.labymod.addons.cores.sync.SyncClient;
 import de.derrop.labymod.addons.cores.tag.TagProvider;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.LabyModAddon;
-import net.labymod.core.ChatComponent;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.ModuleCategoryRegistry;
@@ -159,10 +158,6 @@ public class CoresAddon extends LabyModAddon {
         this.addSupportedGameType(new CoresGameType(new ControlElement.IconData(Material.BEACON), true));
         this.addSupportedGameType(new BedWarsGameType(new ControlElement.IconData(Material.BED), false));
 
-        if (this.authToken != null && !this.authToken.isEmpty()) {
-            this.connectToSyncServer();
-        }
-
         ModuleCategoryRegistry.loadCategory(
                 this.coresCategory = new ModuleCategory(
                         "Stats",
@@ -210,11 +205,12 @@ public class CoresAddon extends LabyModAddon {
     }
 
     private void connectToSyncServer() {
-        this.syncClient.connect(
+        if (this.syncClient.connect(
                 new InetSocketAddress("internal.gomme.derrop.gq", 1510),
                 this.authToken,
-                error -> LabyMod.getInstance().notifyMessageRaw("Cannot connect to stats server!", error)
-        );
+                error -> LabyMod.getInstance().notifyMessageRaw("Stats", "§c" + error))) {
+            LabyMod.getInstance().notifyMessageRaw("Stats", "§aSuccessfully connected");
+        }
     }
 
     public void handleServerSwitch(String serverType, String serverId) {
@@ -346,12 +342,16 @@ public class CoresAddon extends LabyModAddon {
             }
         }
         this.authToken = getConfig().has("token") ? getConfig().get("token").getAsString() : null;
+
+        if (this.authToken != null && !this.authToken.isEmpty()) {
+            this.connectToSyncServer();
+        }
     }
 
     @Override
     protected void fillSettings(List<SettingsElement> subSettings) {
         subSettings.add(
-                new StringElement("Token", this, new ControlElement.IconData(Material.DIAMOND_SWORD), "token", "")
+                new StringElement("Token", this, new ControlElement.IconData(Material.DIAMOND_SWORD), "token", this.authToken)
                 .addCallback(token -> {
                     this.authToken = token;
                     if (token != null && !token.isEmpty()) {
