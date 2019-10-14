@@ -1,4 +1,4 @@
-package de.derrop.labymod.addons.cores.sync;
+package de.derrop.labymod.addons.cores.network.sync;
 /*
  * Created by derrop on 30.09.2019
  */

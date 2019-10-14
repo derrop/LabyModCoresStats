@@ -4,10 +4,16 @@ package de.derrop.labymod.addons.cores.listener;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.regex.Patterns;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.events.MessageSendEvent;
 import net.labymod.core.LabyModCore;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
 
 public class CommandListener implements MessageSendEvent {
 
@@ -33,22 +39,44 @@ public class CommandListener implements MessageSendEvent {
             this.displayStatistics(this.coresAddon.getWorstPlayer(), false);
         } else if (args[0].equalsIgnoreCase("ctag") || args[0].equalsIgnoreCase("utag")) {
             TagType tagType = args[0].equalsIgnoreCase("ctag") ? TagType.CLAN : TagType.PLAYER;
-            if (args.length == 4 && args[1].equalsIgnoreCase("add")) {
+            if (args.length >= 4 && args[1].equalsIgnoreCase("addt")) {
                 if (this.coresAddon.getTagProvider().isUseable()) {
-                    this.coresAddon.getTagProvider().addTag(tagType, args[2], args[3]).thenAccept(success -> {
-                        if (success) {
-                            LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich hinzugefügt");
-                        } else {
-                            LabyModCore.getMinecraft().displayMessageInChat("§cDieser User besitzt den Tag §e\"" + args[3] + "\" §cbereits");
-                        }
-                    });
+                    String[] tags = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).split(";");
+                    String[] users = this.findUsersOrClansInTeam(tagType, args[2]);
+                    if (users.length != 0) {
+                        this.addTags(tagType, users, tags);
+                    } else {
+                        LabyModCore.getMinecraft().displayMessageInChat("§cDieses Team wurde nicht gefunden");
+                    }
                 } else {
                     LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
                 }
-            } else if (args.length == 4 && args[1].equalsIgnoreCase("remove")) {
+            } else if (args.length >= 4 && args[1].equalsIgnoreCase("removet")) {
                 if (this.coresAddon.getTagProvider().isUseable()) {
-                    this.coresAddon.getTagProvider().removeTag(tagType, args[2], args[3]);
-                    LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + args[3] + "\" §awurde dem User §e\"" + args[2] + "\" §aerfolgreich entfernt");
+
+                    String[] tags = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).split(";");
+                    String[] users = this.findUsersOrClansInTeam(tagType, args[2]);
+                    if (users.length != 0) {
+                        this.removeTags(tagType, users, tags);
+                    } else {
+                        LabyModCore.getMinecraft().displayMessageInChat("§cDieses Team wurde nicht gefunden");
+                    }
+                } else {
+                    LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
+                }
+            } else if (args.length >= 4 && args[1].equalsIgnoreCase("add")) {
+                if (this.coresAddon.getTagProvider().isUseable()) {
+                    String[] tags = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).split(";");
+                    String[] users = args[2].split(";");
+                    this.addTags(tagType, users, tags);
+                } else {
+                    LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
+                }
+            } else if (args.length >= 4 && args[1].equalsIgnoreCase("remove")) {
+                if (this.coresAddon.getTagProvider().isUseable()) {
+                    String[] users = args[2].split(";");
+                    String[] tags = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).split(";");
+                    this.removeTags(tagType, users, tags);
                 } else {
                     LabyModCore.getMinecraft().displayMessageInChat("§cDu bist nicht mit dem Server verbunden");
                 }
@@ -74,8 +102,51 @@ public class CommandListener implements MessageSendEvent {
             LabyModCore.getMinecraft().displayMessageInChat("§e!worstStats §8| §7display the statistics of the player with the lowest rank in the current round");
             LabyModCore.getMinecraft().displayMessageInChat("§e!ctag add/remove/list <clanTag> <tag> §8| §7add/remove/list the tags of a clan");
             LabyModCore.getMinecraft().displayMessageInChat("§e!utag add/remove/list <name> <tag> §8| §7add/remove/list the tags of a player");
+            LabyModCore.getMinecraft().displayMessageInChat("§e!ctag addt/removet <team> <tag> §8| §7add/remove the tags of every clan in a team");
+            LabyModCore.getMinecraft().displayMessageInChat("§e!utag addt/removet <team> <tag> §8| §7add/remove the tags of every player in a team");
         }
         return true;
+    }
+
+    private String[] findUsersOrClansInTeam(TagType tagType, String team) {
+        Collection<String> users = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(s -> Patterns.getPossibleTeamPrefixes(team).contains(s));
+        if (tagType == TagType.PLAYER) {
+            return users.toArray(new String[0]);
+        } else {
+            Collection<String> clans = new HashSet<>();
+            for (String user : users) {
+                String tag = this.coresAddon.getScoreboardTagDetector().getScoreboardTag(user);
+                if (tag == null || this.coresAddon.getScoreboardTagDetector().isParty(tag)) {
+                    continue;
+                }
+
+                clans.add(tag);
+            }
+            return clans.toArray(new String[0]);
+        }
+    }
+
+    private void removeTags(TagType tagType, String[] users, String[] tags) {
+        for (String user : users) {
+            for (String tag : tags) {
+                this.coresAddon.getTagProvider().removeTag(tagType, user, tag);
+                LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + tag + "\" §awurde dem User §e\"" + user + "\" §aerfolgreich entfernt");
+            }
+        }
+    }
+
+    private void addTags(TagType tagType, String[] users, String[] tags) {
+        for (String user : users) {
+            for (String tag : tags) {
+                this.coresAddon.getTagProvider().addTag(tagType, user, tag).thenAccept(success -> {
+                    if (success) {
+                        LabyModCore.getMinecraft().displayMessageInChat("§aDer Tag §e\"" + tag + "\" §awurde dem User §e\"" + user + "\" §aerfolgreich hinzugefügt");
+                    } else {
+                        LabyModCore.getMinecraft().displayMessageInChat("§cDer User §e\"" + user + "\" §cbesitzt den Tag §e\"" + tag + "\" §cbereits");
+                    }
+                });
+            }
+        }
     }
 
     private void displayStatistics(PlayerStatistics stats, boolean best) {

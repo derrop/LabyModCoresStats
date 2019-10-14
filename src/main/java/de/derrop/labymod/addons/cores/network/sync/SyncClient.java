@@ -1,4 +1,4 @@
-package de.derrop.labymod.addons.cores.sync;
+package de.derrop.labymod.addons.cores.network.sync;
 /*
  * Created by derrop on 30.09.2019
  */
@@ -6,6 +6,8 @@ package de.derrop.labymod.addons.cores.sync;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import de.derrop.labymod.addons.cores.network.sync.codec.PacketDecoder;
+import de.derrop.labymod.addons.cores.network.sync.codec.PacketEncoder;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
@@ -13,12 +15,13 @@ import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 import net.minecraft.client.Minecraft;
 
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
@@ -37,11 +40,11 @@ public class SyncClient implements AutoCloseable {
         return this.channel != null && this.channel.isOpen();
     }
 
-    public void sendPacket(short packetId, JsonElement payload) { //todo sometimes two or more packets are "merged" and therefore cannot be parsed
+    public void sendPacket(short packetId, JsonElement payload) {
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("id", packetId);
         jsonObject.add("payload", payload);
-        this.channel.writeAndFlush(jsonObject.toString()).syncUninterruptibly();
+        this.channel.writeAndFlush(jsonObject).syncUninterruptibly();
     }
 
     public boolean connect(InetSocketAddress host, String authToken, Consumer<String> errorHandler) {
@@ -58,7 +61,7 @@ public class SyncClient implements AutoCloseable {
                     @Override
                     protected void initChannel(Channel channel) throws Exception {
                         channel.pipeline()
-                                .addLast(new StringEncoder(), new StringDecoder())
+                                .addLast(new PacketEncoder(), new PacketDecoder())
                                 .addLast(new PacketReader());
                     }
                 })
@@ -109,7 +112,7 @@ public class SyncClient implements AutoCloseable {
         packet.addProperty("id", packetId);
         packet.addProperty("queryId", queryId);
         packet.add("payload", payload);
-        this.channel.writeAndFlush(packet.toString());
+        this.channel.writeAndFlush(packet);
 
         return future;
     }
@@ -137,7 +140,7 @@ public class SyncClient implements AutoCloseable {
                     JsonObject response = new JsonObject();
                     response.addProperty("queryId", queryId);
                     response.add("payload", element);
-                    ctx.channel().writeAndFlush(response.toString());
+                    ctx.channel().writeAndFlush(response);
                 };
             }
 

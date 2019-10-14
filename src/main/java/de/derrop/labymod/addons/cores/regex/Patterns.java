@@ -3,21 +3,38 @@ package de.derrop.labymod.addons.cores.regex;
  * Created by derrop on 25.09.2019
  */
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Patterns {
 
-    private static final Map<String, String> TEAM_NAME_TAG_MAP = new HashMap<>();
+    private static final Map<String, Collection<String>> TEAM_NAME_TAG_MAP = new HashMap<>();
 
     static {
-        TEAM_NAME_TAG_MAP.put("Rot", "§cRot §7| §c");
-        TEAM_NAME_TAG_MAP.put("Red", "§cRed §7| §c");
-
-        TEAM_NAME_TAG_MAP.put("Blau", "§9Blau §7| §9");
-        TEAM_NAME_TAG_MAP.put("Blue", "§9Blau §7| §9");
+        registerScoreboardTeamPrefix(
+                new String[]{
+                        "red",
+                        "rot"
+                },
+                new String[]{
+                        "§cRed §7| §c",
+                        "§cRot §7| §c"
+                }
+        );
+        registerScoreboardTeamPrefix(
+                new String[]{
+                        "blue",
+                        "blau"
+                },
+                new String[]{
+                        "§9Blau §7| §9",
+                        "§9Blue §7| §9"
+                });
         //todo support for more teams
     }
 
@@ -45,8 +62,14 @@ public class Patterns {
         return null;
     }
 
-    public static String getScoreboardTeamPrefix(String teamName) {
-        return TEAM_NAME_TAG_MAP.get(teamName);
+    public static void registerScoreboardTeamPrefix(String[] names, String[] prefixes) {
+        for (String name : names) {
+            TEAM_NAME_TAG_MAP.put(name, Arrays.asList(prefixes));
+        }
+    }
+
+    public static Collection<String> getPossibleTeamPrefixes(String teamName) {
+        return TEAM_NAME_TAG_MAP.get(teamName.toLowerCase());
     }
 
 }

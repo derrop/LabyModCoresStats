@@ -22,7 +22,7 @@ import de.derrop.labymod.addons.cores.module.TimerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
-import de.derrop.labymod.addons.cores.sync.SyncClient;
+import de.derrop.labymod.addons.cores.network.sync.SyncClient;
 import de.derrop.labymod.addons.cores.tag.TagProvider;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.LabyModAddon;
@@ -243,8 +243,8 @@ public class CoresAddon extends LabyModAddon {
                         exception.printStackTrace();
                     }
                 },
-                this.random.nextInt(150) + 50, TimeUnit.MILLISECONDS
-        ); //min: 50; max: 200
+                this.random.nextInt(250) + 50, TimeUnit.MILLISECONDS
+        );
     }
 
     private void warnOnGoodStats(PlayerStatistics statistics) {
@@ -359,6 +359,8 @@ public class CoresAddon extends LabyModAddon {
                             this.syncClient.close();
                         }
                         this.connectToSyncServer();
+                    } else if (this.syncClient.isConnected()) {
+                        this.syncClient.close();
                     }
                 })
         );

@@ -64,12 +64,13 @@ public class MatchDetector implements MessageReceiveEvent {
         Collection<String> winners = null;
 
         if (winnerTeam != null) {
-            String prefix = Patterns.getScoreboardTeamPrefix(winnerTeam);
-            if (prefix == null) {
+            Collection<String> possibleTeamPrefixes = Patterns.getPossibleTeamPrefixes(winnerTeam);
+            if (possibleTeamPrefixes == null || possibleTeamPrefixes.isEmpty()) {
                 System.err.println("Failed to parse team \"" + winnerTeam + "\", language not supported!");
+            } else {
+                winners = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(possibleTeamPrefixes::contains);
+                System.out.println("Winners: " + winners + " [Team " + winnerTeam + "]");
             }
-            winners = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(s -> s.equals(prefix));
-            System.out.println("Winners: " + winners + " [Team " + winnerTeam + "]");
         }
 
         if (this.coresAddon.getSyncClient().isConnected()) {
