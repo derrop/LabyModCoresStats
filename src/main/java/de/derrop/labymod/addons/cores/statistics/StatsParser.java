@@ -3,6 +3,7 @@ package de.derrop.labymod.addons.cores.statistics;
  * Created by derrop on 22.09.2019
  */
 
+import com.google.gson.JsonObject;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.regex.Patterns;
@@ -136,6 +137,21 @@ public class StatsParser {
         if (this.readingStats != null) {
             if (this.readingStats.isStatsEnd(message)) {
                 this.readStatistics.put(this.readingStats.getName(), this.readingStats);
+
+                if (this.coresAddon.getSyncClient().isConnected()) {
+                    JsonObject jsonObject = new JsonObject();
+
+                    this.coresAddon.getOnlinePlayers().entrySet().stream()
+                            .filter(entry -> entry.getValue().getName().equals(this.readingStats.getName()))
+                            .findFirst()
+                            .ifPresent(entry -> jsonObject.addProperty("uniqueId", entry.getKey().toString()));
+
+                    jsonObject.addProperty("name", this.readingStats.getName());
+                    jsonObject.addProperty("gamemode", this.readingStats.getGameType());
+                    jsonObject.add("stats", this.coresAddon.getGson().toJsonTree(this.readingStats.getStats()));
+                    this.coresAddon.getSyncClient().sendPacket((short) 4, jsonObject);
+                }
+
                 return StatsParseResult.END;
             }
             this.readingStats.parseLine(message);

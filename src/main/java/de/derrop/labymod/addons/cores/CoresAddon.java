@@ -91,6 +91,14 @@ public class CoresAddon extends LabyModAddon {
         return onlinePlayers;
     }
 
+    public boolean isPlayerOnline(String name) {
+        return this.onlinePlayers.values().stream().anyMatch(gameProfile -> gameProfile.getName().equals(name));
+    }
+
+    public boolean isPlayerOnline(UUID uniqueId) {
+        return this.onlinePlayers.containsKey(uniqueId);
+    }
+
     public String getCurrentServer() {
         return this.serverDetector.getCurrentServer();
     }
