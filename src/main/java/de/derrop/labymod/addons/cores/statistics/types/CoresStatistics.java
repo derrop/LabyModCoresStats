@@ -39,6 +39,7 @@ public class CoresStatistics extends SimplePatternPlayerStatistics {
     private double kd = 0;
     private int rank = 0;
     private double winRate = 0;
+    private int destroyedCores = 0;
     private int playedGames = 0;
     private int wonGames = 0;
 
@@ -73,6 +74,7 @@ public class CoresStatistics extends SimplePatternPlayerStatistics {
                 "Siegwahrscheinlichkeit: " + this.winRate + " %",
                 "Gespielte Spiele: " + this.playedGames,
                 "Gewonnene Spiele: " + this.wonGames,
+                "Zerstörte Cores: " + this.destroyedCores,
                 "K/D: " + this.kd,
                 "Kills: " + this.kills,
                 "Deaths: " + this.deaths
@@ -130,6 +132,9 @@ public class CoresStatistics extends SimplePatternPlayerStatistics {
                 break;
             case "wonGames":
                 this.wonGames = Integer.parseInt(value);
+                break;
+            case "destroyedCores":
+                this.destroyedCores = Integer.parseInt(value);
                 break;
         }
     }
