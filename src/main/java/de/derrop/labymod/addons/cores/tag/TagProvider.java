@@ -23,7 +23,7 @@ public class TagProvider {
         return this.coresAddon.getSyncClient().isConnected();
     }
 
-    public CompletableFuture<Collection<String>> listTags(TagType tagType, String name) {
+    public CompletableFuture<Collection<Tag>> listTags(TagType tagType, String name) {
         if (!this.isUseable()) {
             return CompletableFuture.completedFuture(null);
         }
@@ -31,12 +31,12 @@ public class TagProvider {
         payload.addProperty("type", tagType.toString());
         payload.addProperty("name", name);
         payload.addProperty("query", "list");
-        CompletableFuture<Collection<String>> future = new CompletableFuture<>();
+        CompletableFuture<Collection<Tag>> future = new CompletableFuture<>();
         this.coresAddon.getSyncClient().sendQuery((short) 5, payload).thenAccept(element -> {
             if (element.isJsonArray()) {
-                Collection<String> tags = new ArrayList<>();
+                Collection<Tag> tags = new ArrayList<>();
                 for (JsonElement content : element.getAsJsonArray()) {
-                    tags.add(content.getAsString());
+                    tags.add(this.coresAddon.getGson().fromJson(content, Tag.class));
                 }
                 future.complete(tags);
             } else {

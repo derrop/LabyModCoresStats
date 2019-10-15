@@ -6,18 +6,25 @@ package de.derrop.labymod.addons.cores.listener;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.regex.Patterns;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
+import de.derrop.labymod.addons.cores.tag.Tag;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.events.MessageSendEvent;
 import net.labymod.core.LabyModCore;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class CommandListener implements MessageSendEvent {
 
     private CoresAddon coresAddon;
+
+    private DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
     public CommandListener(CoresAddon coresAddon) {
         this.coresAddon = coresAddon;
@@ -86,7 +93,11 @@ public class CommandListener implements MessageSendEvent {
                         if (tags == null || tags.isEmpty()) {
                             LabyModCore.getMinecraft().displayMessageInChat("§cKeine Tags für den User §e\"" + args[2] + "\" §cgefunden");
                         } else {
-                            LabyModCore.getMinecraft().displayMessageInChat("§aTags des Users §e\"" + args[2] + "\"§a: §e" + String.join(", ", tags));
+                            LabyModCore.getMinecraft().displayMessageInChat("§aTags des Users §e\"" + args[2] + "\"§a: \n" +
+                                    tags.stream()
+                                            .map(tag -> "§e\"" + tag.getTag() + "\" §7by §e" + tag.getCreator() + " §7(§e" + this.dateFormat.format(new Date(tag.getCreationTime())) + "§7)")
+                                            .collect(Collectors.joining("\n"))
+                            );
                         }
                     });
                 } else {

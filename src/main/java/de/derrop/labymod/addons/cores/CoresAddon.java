@@ -23,6 +23,7 @@ import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import de.derrop.labymod.addons.cores.network.sync.SyncClient;
+import de.derrop.labymod.addons.cores.tag.Tag;
 import de.derrop.labymod.addons.cores.tag.TagProvider;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.LabyModAddon;
@@ -42,6 +43,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class CoresAddon extends LabyModAddon {
@@ -274,13 +276,13 @@ public class CoresAddon extends LabyModAddon {
         if (!this.scoreboardTagDetector.isParty(otherTag)) {
             this.tagProvider.listTags(TagType.CLAN, otherTag.substring(2) /* Remove the color code at the beginning */).thenAccept(tags -> {
                 if (tags != null && !tags.isEmpty()) {
-                    LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Clan §e" + otherTag + " §7hat die Tags §e" + String.join(", ", tags));
+                    LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Clan §e" + otherTag + " §7hat die Tags §e" + tags.stream().map(Tag::getTag).collect(Collectors.joining(", ")));
                 }
             });
         }
         this.tagProvider.listTags(TagType.PLAYER, statistics.getName()).thenAccept(tags -> {
             if (tags != null && !tags.isEmpty()) {
-                LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat die Tags §e" + String.join(", ", tags));
+                LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat die Tags §e" + tags.stream().map(Tag::getTag).collect(Collectors.joining(", ")));
             }
         });
 
