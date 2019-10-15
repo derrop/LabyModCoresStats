@@ -11,6 +11,9 @@ import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.regex.Patterns;
 import net.labymod.api.events.MessageReceiveEvent;
+import net.labymod.core.LabyModCore;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.network.NetworkPlayerInfo;
 
 import java.util.Collection;
 
@@ -44,8 +47,10 @@ public class MatchDetector implements MessageReceiveEvent {
         if (this.coresAddon.getSyncClient().isConnected()) {
             JsonObject payload = new JsonObject();
             JsonArray players = new JsonArray();
-            for (GameProfile value : this.coresAddon.getOnlinePlayers().values()) {
-                players.add(new JsonPrimitive(value.getName()));
+            for (NetworkPlayerInfo value : LabyModCore.getMinecraft().getConnection().getPlayerInfoMap()) {
+                if (value.getGameProfile() != null) {
+                    players.add(new JsonPrimitive(value.getGameProfile().getName()));
+                }
             }
             payload.add("players", players);
             payload.addProperty("map", this.currentMap);
@@ -82,6 +87,13 @@ public class MatchDetector implements MessageReceiveEvent {
                 }
                 payload.add("winners", winnersArray);
             }
+            JsonArray players = new JsonArray();
+            for (NetworkPlayerInfo value : LabyModCore.getMinecraft().getConnection().getPlayerInfoMap()) {
+                if (value.getGameProfile() != null) {
+                    players.add(new JsonPrimitive(value.getGameProfile().getName()));
+                }
+            }
+            payload.add("players", players);
             payload.addProperty("texturePath", this.currentMatchGameType.getMinecraftTexturePath());
             this.coresAddon.getSyncClient().sendPacket((short) 2, payload);
         }

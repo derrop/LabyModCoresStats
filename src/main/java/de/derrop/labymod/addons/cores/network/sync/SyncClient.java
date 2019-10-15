@@ -15,6 +15,8 @@ import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import net.minecraft.client.Minecraft;
 
 import java.net.InetSocketAddress;
@@ -61,6 +63,8 @@ public class SyncClient implements AutoCloseable {
                     @Override
                     protected void initChannel(Channel channel) throws Exception {
                         channel.pipeline()
+                                .addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
+                                        new LengthFieldPrepender(4))
                                 .addLast(new PacketEncoder(), new PacketDecoder())
                                 .addLast(new PacketReader());
                     }
