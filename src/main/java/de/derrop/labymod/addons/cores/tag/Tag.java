@@ -18,6 +18,12 @@ public class Tag {
         this.creationTime = creationTime;
     }
 
+    public Tag(TagType tagType, String name, String tag) {
+        this.tagType = tagType;
+        this.name = name;
+        this.tag = tag;
+    }
+
     public TagType getTagType() {
         return tagType;
     }
@@ -36,5 +42,9 @@ public class Tag {
 
     public long getCreationTime() {
         return creationTime;
+    }
+
+    public boolean isFull() {
+        return this.creationTime >= 0 && this.creator != null;
     }
 }

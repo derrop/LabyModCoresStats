@@ -20,11 +20,13 @@ import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.module.BestPlayerModule;
 import de.derrop.labymod.addons.cores.module.TimerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
+import de.derrop.labymod.addons.cores.network.sync.SyncClient;
+import de.derrop.labymod.addons.cores.network.sync.handler.TagHandler;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.statistics.StatsParser;
-import de.derrop.labymod.addons.cores.network.sync.SyncClient;
 import de.derrop.labymod.addons.cores.tag.Tag;
 import de.derrop.labymod.addons.cores.tag.TagProvider;
+import de.derrop.labymod.addons.cores.tag.TagRenderListener;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
@@ -181,6 +183,7 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));
+        this.getApi().getEventManager().register(new TagRenderListener(this.tagProvider));
         this.getApi().getEventManager().register(this.matchDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
@@ -203,6 +206,8 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(this.serverDetector);
 
         this.statsParser = new StatsParser(this, this.executorService);
+
+        this.syncClient.registerHandler((short) 1, new TagHandler(this));
 
         System.out.println("[GommeStats] Successfully enabled the addon!");
     }
@@ -263,6 +268,7 @@ public class CoresAddon extends LabyModAddon {
         }
         System.out.println("PlayerStatistics for " + statistics.getName() + ": " + statistics.getStats());
         if (LabyModCore.getMinecraft().getPlayer().getName().equals(statistics.getName())) { //not warning for my good stats
+            this.tagProvider.listTags(TagType.PLAYER, statistics.getName()); //load to display above the player name
             return;
         }
 
