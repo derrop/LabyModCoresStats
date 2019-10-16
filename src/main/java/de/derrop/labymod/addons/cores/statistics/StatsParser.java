@@ -7,13 +7,11 @@ import com.google.gson.JsonObject;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.regex.Patterns;
-import de.derrop.labymod.addons.cores.statistics.types.CoresStatistics;
 import net.labymod.core.LabyModCore;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.stream.Stream;
 
@@ -37,7 +35,7 @@ public class StatsParser {
                     String name = this.requestQueue.take();
                     if (LabyModCore.getMinecraft().getPlayer() != null) {
                         LabyModCore.getMinecraft().getPlayer().sendChatMessage("/stats " + name);
-                        Thread.sleep(300);
+                        Thread.sleep(600);
                     } else { //not connected to any server
                         CompletableFuture<PlayerStatistics> future = this.statsRequests.get(name);
                         if (future != null) {
