@@ -6,6 +6,7 @@ package de.derrop.labymod.addons.cores;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
+import de.derrop.labymod.addons.cores.config.MainConfig;
 import de.derrop.labymod.addons.cores.detector.MatchDetector;
 import de.derrop.labymod.addons.cores.detector.ScoreboardTagDetector;
 import de.derrop.labymod.addons.cores.detector.ServerDetector;
@@ -54,6 +55,8 @@ public class CoresAddon extends LabyModAddon {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Random random = new Random();
 
+    private MainConfig config = new MainConfig();
+
     private Map<UUID, GameProfile> onlinePlayers = new HashMap<>();
 
     private ServerDetector serverDetector = new ServerDetector(this);
@@ -63,7 +66,6 @@ public class CoresAddon extends LabyModAddon {
 
     private Map<String, GameType> supportedGameTypes = new HashMap<>();
 
-    private boolean externalDisplayEnabled;
     private StatisticsDisplay display;
 
     private long lastRoundBeginTimestamp = -1;
@@ -72,8 +74,6 @@ public class CoresAddon extends LabyModAddon {
 
     private SyncClient syncClient = new SyncClient();
     private TagProvider tagProvider = new TagProvider(this);
-
-    private String authToken;
 
     public TagProvider getTagProvider() {
         return tagProvider;
@@ -159,6 +159,10 @@ public class CoresAddon extends LabyModAddon {
         return this.serverDetector.getCurrentServerType() != null && this.serverDetector.getCurrentServerType().isEnabled();
     }
 
+    public MainConfig getMainConfig() {
+        return this.config;
+    }
+
     public Map<String, GameType> getSupportedGameTypes() {
         return supportedGameTypes;
     }
@@ -183,7 +187,7 @@ public class CoresAddon extends LabyModAddon {
         this.getApi().getEventManager().register(new PlayerStatsListener(this));
         this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));
-        this.getApi().getEventManager().register(new TagRenderListener(this.tagProvider));
+        this.getApi().getEventManager().register(new TagRenderListener(this, this.tagProvider));
         this.getApi().getEventManager().register(this.matchDetector);
         this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
 
@@ -219,10 +223,10 @@ public class CoresAddon extends LabyModAddon {
         }
     }
 
-    private void connectToSyncServer() {
+    public void connectToSyncServer() {
         if (this.syncClient.connect(
                 new InetSocketAddress("internal.gomme.derrop.gq", 1510),
-                this.authToken,
+                this.config.authToken,
                 error -> LabyMod.getInstance().notifyMessageRaw("Stats", "§c" + error))) {
             LabyMod.getInstance().notifyMessageRaw("Stats", "§aSuccessfully connected");
         }
@@ -241,7 +245,7 @@ public class CoresAddon extends LabyModAddon {
                     this.requestPlayerStatsAndWarn(profile.getName());
                 }
             }, 500, TimeUnit.MILLISECONDS);
-            if (this.externalDisplayEnabled) {
+            if (this.config.externalDisplayEnabled) {
                 this.display.setVisible(true);
             }
         } else {
@@ -333,70 +337,11 @@ public class CoresAddon extends LabyModAddon {
 
     @Override
     public void loadConfig() {
-        this.externalDisplayEnabled = getConfig().has("externalDisplayEnabled") && getConfig().get("externalDisplayEnabled").getAsBoolean();
-        if (getConfig().has("externalDisplay")) {
-            Rectangle rectangle = this.gson.fromJson(
-                    getConfig().get("externalDisplay"),
-                    Rectangle.class
-            );
-            int extendedState = getConfig().has("externalDisplayExtendedState") ?
-                    getConfig().get("externalDisplayExtendedState").getAsInt() :
-                    JFrame.NORMAL;
-            if (rectangle != null) {
-                this.display.setBounds(rectangle);
-                if (this.display.isVisible()) {
-                    this.display.repaint();
-                }
-                this.display.setExtendedState(extendedState);
-            }
-        }
-        for (GameType gameType : this.supportedGameTypes.values()) {
-            if (getConfig().has(gameType.getName() + "Enabled")) {
-                gameType.setEnabled(getConfig().get(gameType.getName() + "Enabled").getAsBoolean());
-            } else {
-                gameType.setEnabled(gameType.isDefaultEnabled());
-            }
-        }
-        this.authToken = getConfig().has("token") ? getConfig().get("token").getAsString() : null;
-
-        if (this.authToken != null && !this.authToken.isEmpty()) {
-            this.connectToSyncServer();
-        }
+        this.config.loadConfig(getConfig(), this);
     }
 
     @Override
     protected void fillSettings(List<SettingsElement> subSettings) {
-        subSettings.add(
-                new StringElement("Token", this, new ControlElement.IconData(Material.DIAMOND_SWORD), "token", this.authToken)
-                .addCallback(token -> {
-                    this.authToken = token;
-                    if (token != null && !token.isEmpty()) {
-                        if (this.syncClient.isConnected()) {
-                            this.syncClient.close();
-                        }
-                        this.connectToSyncServer();
-                    } else if (this.syncClient.isConnected()) {
-                        this.syncClient.close();
-                    }
-                })
-        );
-
-        subSettings.add(
-                new BooleanElement("External Display", this, new ControlElement.IconData(Material.SIGN), "externalDisplayEnabled", false)
-                        .addCallback(externalDisplay -> {
-                            this.externalDisplayEnabled = externalDisplay;
-                            if (!this.externalDisplayEnabled) {
-                                this.display.setVisible(false);
-                            } else if (this.isCurrentServerTypeSupported()) {
-                                this.display.setVisible(true);
-                            }
-                        })
-        );
-        for (GameType gameType : this.supportedGameTypes.values()) {
-            subSettings.add(
-                    new BooleanElement(gameType.getName() + " Stats", this, gameType.getIconData(), gameType.getName() + "Enabled", gameType.isDefaultEnabled())
-                            .addCallback(gameType::setEnabled)
-            );
-        }
+        this.config.fillSettings(subSettings, this);
     }
 }

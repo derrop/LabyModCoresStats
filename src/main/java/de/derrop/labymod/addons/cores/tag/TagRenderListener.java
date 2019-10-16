@@ -3,17 +3,15 @@ package de.derrop.labymod.addons.cores.tag;
  * Created by derrop on 15.10.2019
  */
 
+import de.derrop.labymod.addons.cores.CoresAddon;
 import net.labymod.api.events.RenderEntityEvent;
 import net.labymod.core.LabyModCore;
 import net.labymod.core.WorldRendererAdapter;
 import net.labymod.main.LabyMod;
-import net.labymod.mojang.RenderPlayerHook;
-import net.labymod.utils.DrawUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.Entity;
@@ -22,17 +20,21 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 public class TagRenderListener implements RenderEntityEvent {
+    private CoresAddon coresAddon;
     private TagProvider tagProvider;
 
-    public TagRenderListener(TagProvider tagProvider) {
+    public TagRenderListener(CoresAddon coresAddon, TagProvider tagProvider) {
+        this.coresAddon = coresAddon;
         this.tagProvider = tagProvider;
     }
 
     @Override
     public void onRender(Entity entity, double x, double y, double z, float partialTicks) {
+        if (!this.coresAddon.getMainConfig().showTagsAboveName) {
+            return;
+        }
         if (!LabyMod.getSettings().showMyName && entity.getUniqueID().equals(LabyMod.getInstance().getPlayerUUID())) {
             return;
         }

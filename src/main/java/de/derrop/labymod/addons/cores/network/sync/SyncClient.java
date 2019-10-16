@@ -38,6 +38,12 @@ public class SyncClient implements AutoCloseable {
     private Map<Short, Collection<PacketHandler>> packetHandlers = new HashMap<>();
     private Map<Short, CompletableFuture<JsonElement>> pendingQueries = new HashMap<>();
 
+    private String connectedToken;
+
+    public boolean isConnectedWithToken(String authToken) {
+        return this.isConnected() && this.connectedToken != null && this.connectedToken.equals(authToken);
+    }
+
     public boolean isConnected() {
         return this.channel != null && this.channel.isOpen();
     }
@@ -78,9 +84,11 @@ public class SyncClient implements AutoCloseable {
         authPayload.addProperty("token", authToken);
         JsonObject response = this.sendQuery((short) 0, authPayload, null).getAsJsonObject();
         if (response.get("success").getAsBoolean()) {
+            this.connectedToken = authToken;
             System.out.println("Successfully connected");
             return true;
         } else {
+            this.connectedToken = null;
             System.err.println("Failed to connect: " + response.get("error").getAsString());
             if (errorHandler != null) {
                 errorHandler.accept(response.get("error").getAsString());
@@ -92,6 +100,7 @@ public class SyncClient implements AutoCloseable {
     @Override
     public void close() {
         this.channel.close().syncUninterruptibly();
+        this.connectedToken = null;
     }
 
     public JsonElement sendQuery(short packetId, JsonElement payload, JsonElement defResponse) {
