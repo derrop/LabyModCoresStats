@@ -4,6 +4,7 @@ package de.derrop.labymod.addons.cores.listener;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.player.OnlinePlayer;
 import de.derrop.labymod.addons.cores.regex.Patterns;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import de.derrop.labymod.addons.cores.tag.Tag;
@@ -120,21 +121,22 @@ public class CommandListener implements MessageSendEvent {
     }
 
     private String[] findUsersOrClansInTeam(TagType tagType, String team) {
-        Stream<String> users = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(s -> Patterns.getPossibleTeamPrefixes(team).contains(s))
+        Stream<String> users = this.coresAddon.getPlayersWithPrefix(s -> Patterns.getPossibleTeamPrefixes(team).contains(s))
                 .stream()
-                .filter(userName -> this.coresAddon.isPlayerOnline(userName));
+                .filter(userName -> this.coresAddon.getPlayerProvider().isPlayerOnline(userName));
 
         if (tagType == TagType.PLAYER) {
             return users.toArray(String[]::new);
         } else {
             Collection<String> clans = new HashSet<>();
             users.forEach(userName -> {
-                String tag = this.coresAddon.getScoreboardTagDetector().getScoreboardTag(userName);
-                if (tag == null || this.coresAddon.getScoreboardTagDetector().isParty(tag)) {
-                    return;
+                OnlinePlayer player = this.coresAddon.getPlayerProvider().getOnlinePlayer(userName);
+                if (player != null) {
+                    String tag = player.getScoreboardTag();
+                    if (tag != null && !player.isInParty()) {
+                        clans.add(tag);
+                    }
                 }
-
-                clans.add(tag);
             });
             return clans.toArray(new String[0]);
         }

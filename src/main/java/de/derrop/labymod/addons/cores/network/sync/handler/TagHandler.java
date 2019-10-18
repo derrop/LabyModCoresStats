@@ -6,6 +6,7 @@ package de.derrop.labymod.addons.cores.network.sync.handler;
 import com.google.gson.JsonElement;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.network.sync.PacketHandler;
+import de.derrop.labymod.addons.cores.player.OnlinePlayer;
 import de.derrop.labymod.addons.cores.tag.Tag;
 import de.derrop.labymod.addons.cores.tag.TagType;
 
@@ -28,11 +29,14 @@ public class TagHandler implements PacketHandler {
         TagType tagType = TagType.valueOf(payload.getAsJsonObject().get("type").getAsString());
         String name = payload.getAsJsonObject().get("name").getAsString();
         String tagName = payload.getAsJsonObject().get("tag").getAsString();
-        if (query.equals("add")) {
-            Tag tag = new Tag(tagType, name, tagName);
-            this.coresAddon.getTagProvider().cacheTag(tag);
-        } else if (query.equals("remove")) {
-            this.coresAddon.getTagProvider().removeFromCache(name, tagName);
+        OnlinePlayer player = this.coresAddon.getPlayerProvider().getOnlinePlayer(name);
+        if (player != null) {
+            if (query.equals("add")) {
+                Tag tag = new Tag(tagType, name, tagName);
+                player.getCachedTags().add(tag);
+            } else if (query.equals("remove")) {
+                player.removeTagFromCache(tagName);
+            }
         }
     }
 }

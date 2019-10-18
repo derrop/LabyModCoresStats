@@ -6,22 +6,26 @@ package de.derrop.labymod.addons.cores.statistics;
 import com.google.gson.JsonObject;
 import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
+import de.derrop.labymod.addons.cores.player.OnlinePlayer;
 import de.derrop.labymod.addons.cores.regex.Patterns;
+import net.labymod.api.events.MessageReceiveEvent;
 import net.labymod.core.LabyModCore;
+import net.minecraft.client.Minecraft;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
-import java.util.stream.Stream;
 
-public class StatsParser {
+public class StatsParser implements MessageReceiveEvent {
 
-    private Map<String, PlayerStatistics> readStatistics = new ConcurrentHashMap<>();
     private Map<String, CompletableFuture<PlayerStatistics>> statsRequests = new HashMap<>();
     private long lastBlock = -1;
 
-    private BlockingQueue<String> requestQueue = new LinkedBlockingQueue<>();
+    private BlockingQueue<Runnable> requestQueue = new LinkedBlockingQueue<>();
 
     private PlayerStatistics readingStats;
 
@@ -32,21 +36,15 @@ public class StatsParser {
         executorService.execute(() -> {
             while (!Thread.interrupted()) {
                 try {
-                    String name = this.requestQueue.take();
+                    Runnable runnable = this.requestQueue.take();
                     if (LabyModCore.getMinecraft().getPlayer() != null) {
-                        LabyModCore.getMinecraft().getPlayer().sendChatMessage("/stats " + name);
+                        runnable.run();
                         Thread.sleep(600);
                     } else { //not connected to any server
-                        CompletableFuture<PlayerStatistics> future = this.statsRequests.get(name);
-                        if (future != null) {
-                            future.complete(null);
+                        for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
+                            value.complete(null);
                         }
-                        while (!this.requestQueue.isEmpty()) {
-                            future = this.statsRequests.remove(this.requestQueue.poll());
-                            if (future != null) {
-                                future.complete(null);
-                            }
-                        }
+                        this.statsRequests.clear();
                         Thread.sleep(5000);
                     }
                 } catch (InterruptedException exception) {
@@ -65,62 +63,85 @@ public class StatsParser {
     }
 
     /**
-     * Gets all cached statistics in the current session
-     *
-     * @return
+     * Clears the cache of statistics and removes the last blocked request
      */
-    public Map<String, PlayerStatistics> getCachedStats() {
-        return readStatistics;
+    public void reset() {
+        this.lastBlock = -1;
+        for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
+            value.complete(null);
+        }
+        this.statsRequests.clear();
+        this.requestQueue.clear();
     }
 
     /**
-     * Gets all cached statistics in the current session mapped to the given game type
+     * Requests the stats of the given player from the server and caches them
      *
-     * @param gameType the game type to map to
-     * @return a stream containing all statistics mapped to the given game type
+     * @param name the name of the player
+     * @return the future with the {@link PlayerStatistics} object
      */
-    public <T extends PlayerStatistics> Stream<T> getCachedStats(String gameType, Class<T> clazz) {
-        return this.readStatistics.values()
-                .stream()
-                .filter(statistics -> statistics.getGameType().equals(gameType))
-                .map(statistics -> (T) statistics);
+    public CompletableFuture<PlayerStatistics> requestStats(String name) {
+        if (name.contains("§")) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (this.statsRequests.containsKey(name)) {
+            return this.statsRequests.get(name);
+        }
+
+        CompletableFuture<PlayerStatistics> future = new CompletableFuture<>();
+
+        this.requestQueue.offer(() -> this.executeRequest(name, future));
+
+        return future;
     }
 
     /**
-     * Gets all cached statistics in the current session mapped to the game type on the current server
+     * Requests the stats of the given player (if the player is online) from the server and caches them
      *
-     * @return an empty stream if the player is not on a server with a supported server type or a stream containing all statistics mapped to the game type of the current server
-     * @see StatsParser#getCachedStats(String, Class)
+     * @param name the name of the player
+     * @return the future with the {@link PlayerStatistics} object
      */
-    public <T extends PlayerStatistics> Stream<T> getCachedStatsMapped(Class<T> clazz) {
-        return this.coresAddon.getCurrentServer() != null ? this.getCachedStats(this.coresAddon.getCurrentServer(), clazz) : Stream.empty();
+    public CompletableFuture<PlayerStatistics> requestStatsByOnlinePlayer(String name) {
+        if (name.contains("§")) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (this.statsRequests.containsKey(name)) {
+            return this.statsRequests.get(name);
+        }
+
+        CompletableFuture<PlayerStatistics> future = new CompletableFuture<>();
+        this.requestQueue.offer(() -> {
+            if (!this.coresAddon.getPlayerProvider().isPlayerOnline(name)) {
+                future.complete(null);
+                return;
+            }
+
+            this.executeRequest(name, future);
+        });
+        return future;
     }
 
-    public Map<String, CompletableFuture<PlayerStatistics>> getStatsRequests() {
-        return statsRequests;
-    }
+    private void executeRequest(String name, CompletableFuture<PlayerStatistics> future) {
+        if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request directly after the other
+            //but it also seems like if you get a blocked request (after something around 10 - 15 requests), that you're not getting unblocked on this server until it restarts
+            //the requests have to be from different players, you could request the stats of a player as often as you want
+            future.complete(null);
+            return;
+        }
 
-    /**
-     * Gets the currently reading stats from the server
-     *
-     * @return
-     */
-    public PlayerStatistics getReadingStats() {
-        return readingStats;
-    }
-
-    public void setReadingStats(PlayerStatistics readingStats) {
-        this.readingStats = readingStats;
+        System.out.println("Parsing stats: " + name);
+        this.statsRequests.put(name, future);
+        LabyModCore.getMinecraft().getPlayer().sendChatMessage("/stats " + name);
     }
 
     /**
      * Called on chat message from the server
      *
-     * @param msg the message including color codes
-     * @return
+     * @param message the message including color codes
+     * @return the result of the message
      */
     public StatsParseResult handleChatMessage(String message) {
-        if (!this.coresAddon.isCurrentServerTypeSupported()) {
+        if (this.statsRequests.isEmpty()) {
             return StatsParseResult.NONE;
         }
         if (message.equals("Du hast zu viele Statistiken abgerufen, bitte versuche es in einer anderen Runde erneut.") || //german
@@ -134,22 +155,6 @@ public class StatsParser {
         }
         if (this.readingStats != null) {
             if (this.readingStats.isStatsEnd(message)) {
-                this.readStatistics.put(this.readingStats.getName(), this.readingStats);
-
-                if (this.coresAddon.getSyncClient().isConnected()) {
-                    JsonObject jsonObject = new JsonObject();
-
-                    this.coresAddon.getOnlinePlayers().entrySet().stream()
-                            .filter(entry -> entry.getValue().getName().equals(this.readingStats.getName()))
-                            .findFirst()
-                            .ifPresent(entry -> jsonObject.addProperty("uniqueId", entry.getKey().toString()));
-
-                    jsonObject.addProperty("name", this.readingStats.getName());
-                    jsonObject.addProperty("gamemode", this.readingStats.getGameType());
-                    jsonObject.add("stats", this.coresAddon.getGson().toJsonTree(this.readingStats.getStats()));
-                    this.coresAddon.getSyncClient().sendPacket((short) 4, jsonObject);
-                }
-
                 return StatsParseResult.END;
             }
             this.readingStats.parseLine(message);
@@ -168,58 +173,40 @@ public class StatsParser {
         return StatsParseResult.NONE;
     }
 
-    /**
-     * Removes the statistics by the name out of the stats cache
-     *
-     * @param name the name of the player
-     */
-    public void removeFromCache(String name) {
-        this.readStatistics.remove(name);
-    }
+    @Override
+    public boolean onReceive(String coloredMessage, String message) {
+        StatsParseResult result = this.handleChatMessage(message);
+        if (result == StatsParseResult.END) {
+            PlayerStatistics stats = this.readingStats;
+            this.readingStats = null;
 
-    /**
-     * Clears the cache of statistics and removes the last blocked request
-     */
-    public void reset() {
-        this.readStatistics.clear();
-        this.lastBlock = -1;
-        for (CompletableFuture<PlayerStatistics> value : this.statsRequests.values()) {
-            value.complete(null);
+            OnlinePlayer player = this.coresAddon.getPlayerProvider().getOnlinePlayer(stats.getName());
+            System.out.println("Stats parsed successfully: " + stats + "; player available: " + (player != null));
+            if (player != null) {
+                player.updateCachedStats(stats);
+            }
+
+            if (this.coresAddon.getSyncClient().isConnected()) {
+                JsonObject jsonObject = new JsonObject();
+
+                if (player != null) {
+                    jsonObject.addProperty("uniqueId", player.getUniqueId().toString());
+                }
+
+                jsonObject.addProperty("name", stats.getName());
+                jsonObject.addProperty("gamemode", stats.getGameType());
+                jsonObject.add("stats", this.coresAddon.getGson().toJsonTree(stats.getStats()));
+                this.coresAddon.getSyncClient().sendPacket((short) 4, jsonObject);
+            }
+
+            CompletableFuture<PlayerStatistics> future = this.statsRequests.remove(stats.getName());
+            if (future != null) {
+                future.complete(stats);
+                return true;
+            }
+        } else if (result == StatsParseResult.BEGIN || result == StatsParseResult.ENTRY) {
+            return this.statsRequests.containsKey(this.readingStats.getName());
         }
-        this.statsRequests.clear();
+        return false;
     }
-
-    /**
-     * Gets the stats of the given player from the cache if they exist
-     *
-     * @param name the name of the player
-     * @return the {@link PlayerStatistics} object or null, if the player is not cached
-     */
-    public PlayerStatistics getCached(String name) {
-        return this.readStatistics.get(name);
-    }
-
-    /**
-     * Requests the stats of the given player from the server and caches them
-     *
-     * @param name the name of the player
-     * @return the future with the {@link PlayerStatistics} object
-     */
-    public CompletableFuture<PlayerStatistics> requestStats(String name) {
-        if (this.statsRequests.containsKey(name)) {
-            return this.statsRequests.get(name);
-        }
-
-        if (this.lastBlock != -1 && System.currentTimeMillis() - this.lastBlock <= 20000) { //after the last blocked request, we wait 20 seconds to not get a blocked request directly after the other
-            //but it also seems like if you get a blocked request (after something around 10 - 15 requests), that you're not getting unblocked on this server until it restarts
-            //the requests have to be from different players, you could request the stats of a player as often as you want
-            return CompletableFuture.completedFuture(null);
-        }
-
-        CompletableFuture<PlayerStatistics> future = new CompletableFuture<>();
-        this.statsRequests.put(name, future);
-        this.requestQueue.offer(name);
-        return future;
-    }
-
 }

@@ -10,7 +10,7 @@ import net.labymod.settings.elements.ControlElement;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class BedWarsGameType extends GameType {
+public class BedWarsGameType extends AbstractMessageJoinLeaveDetectingGameType {
     private static final Pattern MATCH_BEGIN_PATTERN = Pattern.compile("\\[.*] Das Spiel beginnt!"); //todo english
     private static final Pattern WINNER_PATTERN = Pattern.compile("\\[*] Team (.*) hat .* gewonnen"); //todo english
     private static final Pattern MAP_PATTERN = Pattern.compile("\\[*] Map: (.*) von: .*|\\[Cores] Map (.*) by: .*");
@@ -41,4 +41,15 @@ public class BedWarsGameType extends GameType {
         Matcher matcher = MAP_PATTERN.matcher(message);
         return matcher.find() ? Patterns.matcherGroup(matcher) : null;
     }
+
+    @Override
+    protected Pattern[] getLeavePatterns() {
+        return new Pattern[]{Patterns.PLAYER_INGAME_LEAVE_PATTERN, Patterns.PLAYER_LEAVE_PATTERN};
+    }
+
+    @Override
+    protected Pattern[] getJoinPatterns() {
+        return new Pattern[]{Patterns.PLAYER_JOIN_PATTERN};
+    }
+
 }

@@ -5,64 +5,59 @@ package de.derrop.labymod.addons.cores;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.mojang.authlib.GameProfile;
 import de.derrop.labymod.addons.cores.config.MainConfig;
 import de.derrop.labymod.addons.cores.detector.MatchDetector;
-import de.derrop.labymod.addons.cores.detector.ScoreboardTagDetector;
+import de.derrop.labymod.addons.cores.detector.PlayerLoginLogoutDetector;
 import de.derrop.labymod.addons.cores.detector.ServerDetector;
 import de.derrop.labymod.addons.cores.display.StatisticsDisplay;
 import de.derrop.labymod.addons.cores.gametypes.BedWarsGameType;
 import de.derrop.labymod.addons.cores.gametypes.CoresGameType;
 import de.derrop.labymod.addons.cores.gametypes.GameType;
 import de.derrop.labymod.addons.cores.listener.CommandListener;
-import de.derrop.labymod.addons.cores.listener.PlayerLoginLogoutListener;
-import de.derrop.labymod.addons.cores.listener.PlayerStatsListener;
-import de.derrop.labymod.addons.cores.listener.PlayerStatsLoginListener;
 import de.derrop.labymod.addons.cores.module.BestPlayerModule;
 import de.derrop.labymod.addons.cores.module.TimerModule;
 import de.derrop.labymod.addons.cores.module.WorstPlayerModule;
 import de.derrop.labymod.addons.cores.network.sync.SyncClient;
 import de.derrop.labymod.addons.cores.network.sync.handler.TagHandler;
+import de.derrop.labymod.addons.cores.player.OnlinePlayer;
+import de.derrop.labymod.addons.cores.player.PlayerDataProviders;
+import de.derrop.labymod.addons.cores.player.PlayerProvider;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
-import de.derrop.labymod.addons.cores.statistics.StatsParser;
 import de.derrop.labymod.addons.cores.tag.Tag;
 import de.derrop.labymod.addons.cores.tag.TagProvider;
-import de.derrop.labymod.addons.cores.tag.TagRenderListener;
 import de.derrop.labymod.addons.cores.tag.TagType;
 import net.labymod.api.LabyModAddon;
 import net.labymod.core.LabyModCore;
 import net.labymod.ingamegui.ModuleCategory;
 import net.labymod.ingamegui.ModuleCategoryRegistry;
 import net.labymod.main.LabyMod;
-import net.labymod.settings.elements.BooleanElement;
 import net.labymod.settings.elements.ControlElement;
 import net.labymod.settings.elements.SettingsElement;
-import net.labymod.settings.elements.StringElement;
 import net.labymod.utils.Material;
+import net.labymod.utils.ServerData;
 
-import javax.swing.*;
-import java.awt.*;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class CoresAddon extends LabyModAddon {
 
-    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(3);
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Random random = new Random();
 
     private MainConfig config = new MainConfig();
 
-    private Map<UUID, GameProfile> onlinePlayers = new HashMap<>();
-
     private ServerDetector serverDetector = new ServerDetector(this);
-    private StatsParser statsParser;
-    private ScoreboardTagDetector scoreboardTagDetector = new ScoreboardTagDetector();
     private MatchDetector matchDetector = new MatchDetector(this);
+    private PlayerLoginLogoutDetector playerLoginLogoutDetector;
+    private PlayerDataProviders playerDataProviders;
 
     private Map<String, GameType> supportedGameTypes = new HashMap<>();
 
@@ -73,34 +68,21 @@ public class CoresAddon extends LabyModAddon {
     private ModuleCategory coresCategory;
 
     private SyncClient syncClient = new SyncClient();
-    private TagProvider tagProvider = new TagProvider(this);
 
-    public TagProvider getTagProvider() {
-        return tagProvider;
-    }
-
-    public StatsParser getStatsParser() {
-        return this.statsParser;
-    }
-
-    public ScoreboardTagDetector getScoreboardTagDetector() {
-        return scoreboardTagDetector;
-    }
-
-    public ScheduledExecutorService getExecutorService() {
+    public ExecutorService getExecutorService() {
         return this.executorService;
     }
 
-    public Map<UUID, GameProfile> getOnlinePlayers() {
-        return onlinePlayers;
+    public PlayerProvider getPlayerProvider() {
+        return this.playerDataProviders.getPlayerProvider();
     }
 
-    public boolean isPlayerOnline(String name) {
-        return this.onlinePlayers.values().stream().anyMatch(gameProfile -> gameProfile.getName().equals(name));
+    public TagProvider getTagProvider() {
+        return this.playerDataProviders.getTagProvider();
     }
 
-    public boolean isPlayerOnline(UUID uniqueId) {
-        return this.onlinePlayers.containsKey(uniqueId);
+    public Collection<String> getPlayersWithPrefix(Predicate<String> prefixTester) {
+        return this.playerDataProviders.getScoreboardTagDetector().getPlayersWithPrefix(prefixTester);
     }
 
     public String getCurrentServer() {
@@ -184,21 +166,18 @@ public class CoresAddon extends LabyModAddon {
 
         this.display = new StatisticsDisplay(this);
 
-        this.getApi().getEventManager().register(new PlayerStatsListener(this));
-        this.getApi().getEventManager().register(new PlayerStatsLoginListener(this));
         this.getApi().getEventManager().register(new CommandListener(this));
-        this.getApi().getEventManager().register(new TagRenderListener(this, this.tagProvider));
         this.getApi().getEventManager().register(this.matchDetector);
-        this.getApi().getEventManager().registerOnIncomingPacket(new PlayerLoginLogoutListener(this));
+        this.getApi().getEventManager().register(this.serverDetector);
 
         this.getApi().registerModule(new BestPlayerModule(this));
         this.getApi().registerModule(new WorstPlayerModule(this));
         this.getApi().registerModule(new TimerModule(this));
 
         this.getApi().getEventManager().registerOnQuit(serverData -> {
-            this.statsParser.reset();
-            this.scoreboardTagDetector.clearCache();
-            this.onlinePlayers.clear();
+            this.playerDataProviders.getStatsParser().reset();
+            this.getPlayerProvider().getOnlinePlayers().clear();
+
             this.serverDetector.reset();
             this.display.setVisible(false);
 
@@ -207,9 +186,9 @@ public class CoresAddon extends LabyModAddon {
             }
         });
 
-        this.getApi().getEventManager().register(this.serverDetector);
+        this.playerDataProviders = new PlayerDataProviders(this);
 
-        this.statsParser = new StatsParser(this, this.executorService);
+        this.playerLoginLogoutDetector = new PlayerLoginLogoutDetector(this, this.playerDataProviders);
 
         this.syncClient.registerHandler((short) 1, new TagHandler(this));
 
@@ -233,18 +212,24 @@ public class CoresAddon extends LabyModAddon {
     }
 
     public void handleServerSwitch(String serverType, String serverId) {
-        this.statsParser.reset();
+        this.playerDataProviders.getStatsParser().reset();
         this.lastRoundBeginTimestamp = -1;
         if (this.matchDetector.isInMatch()) {
             this.matchDetector.handleMatchEnd(null);
         }
 
+        this.playerLoginLogoutDetector.reset();
+
         if (this.isCurrentServerTypeSupported()) {
-            this.executorService.schedule(() -> { //wait for the tablist packets to arrive
-                for (GameProfile profile : this.onlinePlayers.values()) {
-                    this.requestPlayerStatsAndWarn(profile.getName());
+            this.executorService.execute(() -> { //wait for the tablist packets to arrive
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-            }, 500, TimeUnit.MILLISECONDS);
+                this.playerLoginLogoutDetector.handleServerSwitch();
+            });
+
             if (this.config.externalDisplayEnabled) {
                 this.display.setVisible(true);
             }
@@ -253,48 +238,48 @@ public class CoresAddon extends LabyModAddon {
         }
     }
 
-    public void requestPlayerStatsAndWarn(String name) {
-        this.executorService.schedule(
-                () -> {
-                    try {
-                        this.warnOnGoodStats(this.getStatsParser().requestStats(name).get(6, TimeUnit.SECONDS));
-                    } catch (InterruptedException | ExecutionException | TimeoutException exception) {
-                        exception.printStackTrace();
-                    }
-                },
-                this.random.nextInt(250) + 50, TimeUnit.MILLISECONDS
-        );
+    public void timedWarnOnGoodStats(OnlinePlayer player) {
+        this.executorService.execute(() -> {
+            try {
+                Thread.sleep(this.random.nextInt(250) + 50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.warnOnGoodStats(player);
+        });
     }
 
-    private void warnOnGoodStats(PlayerStatistics statistics) {
-        if (statistics == null) {
+    public void warnForTags(OnlinePlayer player) {
+        if (!player.isInParty() && player.getScoreboardTag() != null) {
+            this.getTagProvider().listTags(TagType.CLAN, player.getScoreboardTag().substring(2) /* Remove the color code at the beginning */).thenAccept(tags -> {
+                if (tags != null && !tags.isEmpty()) {
+                    LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Clan §e" + player.getScoreboardTag() + " §7hat die Tags §e" + tags.stream().map(Tag::getTag).collect(Collectors.joining(", ")));
+                }
+            });
+        }
+        player.loadTags().thenAccept(tags -> {
+            if (tags != null && !tags.isEmpty()) {
+                LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + player.getName() + " §7hat die Tags §e" + tags.stream().map(Tag::getTag).collect(Collectors.joining(", ")));
+            }
+        });
+    }
+
+    private void warnOnGoodStats(OnlinePlayer player) {
+        if (player.getLastStatistics() == null) {
             return;
         }
+        PlayerStatistics statistics = player.getLastStatistics();
         System.out.println("PlayerStatistics for " + statistics.getName() + ": " + statistics.getStats());
         if (LabyModCore.getMinecraft().getPlayer().getName().equals(statistics.getName())) { //not warning for my good stats
-            this.tagProvider.listTags(TagType.PLAYER, statistics.getName()); //load to display above the player name
             return;
         }
 
-        String selfTag = this.scoreboardTagDetector.getSelfScoreboardTag();
-        String otherTag = this.scoreboardTagDetector.getScoreboardTag(statistics.getName());
+        String selfTag = this.playerDataProviders.getScoreboardTagDetector().detectScoreboardTag(LabyMod.getInstance().getPlayerName());
+        String otherTag = player.getScoreboardTag();
         if (selfTag != null && selfTag.equals(otherTag)) { //don't warn when the player is in my clan/party
             System.out.println("Clan/Party contains " + statistics.getName() + ", not warning the player!");
             return;
         }
-
-        if (!this.scoreboardTagDetector.isParty(otherTag)) {
-            this.tagProvider.listTags(TagType.CLAN, otherTag.substring(2) /* Remove the color code at the beginning */).thenAccept(tags -> {
-                if (tags != null && !tags.isEmpty()) {
-                    LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Clan §e" + otherTag + " §7hat die Tags §e" + tags.stream().map(Tag::getTag).collect(Collectors.joining(", ")));
-                }
-            });
-        }
-        this.tagProvider.listTags(TagType.PLAYER, statistics.getName()).thenAccept(tags -> {
-            if (tags != null && !tags.isEmpty()) {
-                LabyModCore.getMinecraft().displayMessageInChat("§4WARNUNG: §7Spieler §e" + statistics.getName() + " §7hat die Tags §e" + tags.stream().map(Tag::getTag).collect(Collectors.joining(", ")));
-            }
-        });
 
         statistics.warnOnGoodStats(LabyModCore.getMinecraft()::displayMessageInChat, () -> {
             /*for (int i = 0; i < 5; i++) { todo this probably caused the ConcurrentModificationException
@@ -304,35 +289,40 @@ public class CoresAddon extends LabyModAddon {
     }
 
     public PlayerStatistics getBestPlayer() {
-        return this.statsParser.getCachedStats().values().stream()
+        return this.getPlayerProvider().getOnlinePlayers().stream()
+                .map(OnlinePlayer::getLastStatistics)
+                .filter(Objects::nonNull)
                 .filter(stats -> stats.hasRank() && stats.getRank() > 0)
                 .min(Comparator.comparingInt(PlayerStatistics::getRank))
                 .orElse(null);
     }
 
-    //todo #1 some players are sometimes not recognized when they join into a cores round (pretty rare now, if not fixed)
-    //      (maybe this is because of the TimeOut Exceptions in the console? I think, that the stats command is sent but the result not parsed correctly)
-    //      if you then execute /stats, you will not get any chat messages but the player will be added to the list of statistics
-    //      if you execute /stats a second time, you will get your chat messages normally
-    //todo #2 higher delay because sometimes we get kicked with "disconnect.spam"
-    //todo #3 (maybe) sync stats between clients with a server to not reach the request limit so fast
-    //todo #4 icon for the addon (addon.json)
-    //todo #5 when not in party, automatically join the team with the best stats (can be enabled/disabled)
-
-    //todo bug: winners contain the nick if a player is nicked
-    //todo bug: players are recognized as "disconnected" when they die because they are removed from the tab list after their death and directly added after it in BEDWARS
-
     public PlayerStatistics getWorstPlayer() {
-        return this.statsParser.getCachedStats().values().stream()
+        return this.getPlayerProvider().getOnlinePlayers().stream()
+                .map(OnlinePlayer::getLastStatistics)
+                .filter(Objects::nonNull)
                 .filter(stats -> stats.hasRank() && stats.getRank() > 0)
                 .max(Comparator.comparingInt(PlayerStatistics::getRank))
                 .orElse(null);
     }
 
-    public Stream<PlayerStatistics> sortStatsStream(Stream<PlayerStatistics> stream) {
+    //todo #3 (maybe) sync stats between clients with a server to not reach the request limit so fast
+    //todo #4 icon for the addon (addon.json)
+    //todo #5 when not in party, automatically join the team with the best stats (can be enabled/disabled)
+
+    //todo bug: winners contain the nick if a player is nicked
+
+    public boolean isConnectedWithGommeServer() {
+        ServerData currentServerData = this.getApi().getCurrentServer();
+        return currentServerData != null &&
+                (LabyMod.getInstance().getCurrentServerData().getIp().toLowerCase().contains("gommehd.net") ||
+                        LabyMod.getInstance().getCurrentServerData().getIp().toLowerCase().contains("mc.gommehd.com"));
+    }
+
+    public Stream<OnlinePlayer> sortStreamByStats(Stream<OnlinePlayer> stream) {
         return stream
-                .filter(PlayerStatistics::hasRank)
-                .sorted(Comparator.comparingInt(PlayerStatistics::getRank));
+                .filter(onlinePlayer -> onlinePlayer.getLastStatistics() != null && onlinePlayer.getLastStatistics().hasRank())
+                .sorted(Comparator.comparingInt(value -> value.getLastStatistics().getRank()));
     }
 
     @Override

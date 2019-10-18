@@ -4,7 +4,7 @@ package de.derrop.labymod.addons.cores.display;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
-import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
+import de.derrop.labymod.addons.cores.player.OnlinePlayer;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -25,6 +25,8 @@ public class StatisticsDisplay extends JFrame {
 
     private CoresAddon coresAddon;
 
+    private Collection<OnlinePlayer> lastOnlinePlayers;
+
     public StatisticsDisplay(CoresAddon coresAddon) {
         super("Stats");
 
@@ -42,13 +44,17 @@ public class StatisticsDisplay extends JFrame {
     }
 
 
-    public void handleStatsUpdate() {
+    public void handleStatsUpdate(Collection<OnlinePlayer> onlinePlayers) {
+        this.lastOnlinePlayers = onlinePlayers;
         super.repaint();
     }
 
     private void paintComponent(Graphics graphics) {
+        if (this.lastOnlinePlayers == null) {
+            return;
+        }
         new DrawAction(graphics, this.getWidth(), this.getHeight())
-                .draw(this.coresAddon.getStatsParser().getCachedStats().values());
+                .draw(this.lastOnlinePlayers);
         this.coresAddon.getConfig().add("externalDisplay", this.coresAddon.getGson().toJsonTree(this.getBounds()));
         this.coresAddon.getConfig().addProperty("externalDisplayExtendedState", this.getExtendedState());
         this.coresAddon.saveConfig();
@@ -83,15 +89,15 @@ public class StatisticsDisplay extends JFrame {
             this.width = width;
         }
 
-        void draw(Collection<PlayerStatistics> statistics) {
+        void draw(Collection<OnlinePlayer> players) {
             this.graphics.setFont(new Font("Arial", Font.PLAIN, 15));
 
-            this.drawString("Spieler online: " + statistics.size());
+            this.drawString("Spieler online: " + players.size());
             this.nextLine();
-            if (statistics.isEmpty()) {
+            if (players.isEmpty()) {
                 return;
             }
-            coresAddon.sortStatsStream(statistics.stream()).forEach(stats -> {
+            coresAddon.sortStreamByStats(players.stream()).forEach(stats -> {
                 if (!cachedHeads.containsKey(stats.getName())) {
                     loadHead(stats.getName());
                 }
@@ -100,7 +106,7 @@ public class StatisticsDisplay extends JFrame {
                     Collection<String> texts = new ArrayList<>();
                     texts.add(stats.getName());
                     texts.add(" ");
-                    texts.addAll(stats.getHumanReadableEntries());
+                    texts.addAll(stats.getLastStatistics().getHumanReadableEntries());
 
                     Image image = cachedHeads.get(stats.getName());
                     int width = image.getWidth(null);

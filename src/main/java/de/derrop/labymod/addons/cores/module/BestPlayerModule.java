@@ -45,7 +45,7 @@ public class BestPlayerModule extends SimpleModule {
 
     @Override
     public boolean isShown() {
-        return super.isShown() && !this.coresAddon.getStatsParser().getCachedStats().isEmpty();
+        return super.isShown() && !this.coresAddon.getPlayerProvider().getOnlinePlayers().isEmpty();
     }
 
     @Override

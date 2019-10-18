@@ -48,6 +48,8 @@ public class Patterns {
 
     //general
     public static final Pattern PLAYER_JOIN_PATTERN = Pattern.compile("» (.*) hat das Spiel betreten|» (.*) joined the game");
+    public static final Pattern PLAYER_LEAVE_PATTERN = Pattern.compile("« (.*) hat das Spiel verlassen|« (.*) left the game");
+    public static final Pattern PLAYER_INGAME_LEAVE_PATTERN = Pattern.compile("\\[BedWars] (.*) hat das Spiel verlassen. Team .* hat noch .* Spieler.|\\[BedWars] (.*) left the game. Team .* has .* remaining players.");
 
     public static String matcherGroup(Matcher matcher) {
         String firstGroup = matcher.group(1);  //1|2

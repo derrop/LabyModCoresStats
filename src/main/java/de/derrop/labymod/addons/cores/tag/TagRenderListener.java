@@ -4,6 +4,7 @@ package de.derrop.labymod.addons.cores.tag;
  */
 
 import de.derrop.labymod.addons.cores.CoresAddon;
+import de.derrop.labymod.addons.cores.player.OnlinePlayer;
 import net.labymod.api.events.RenderEntityEvent;
 import net.labymod.core.LabyModCore;
 import net.labymod.core.WorldRendererAdapter;
@@ -41,6 +42,11 @@ public class TagRenderListener implements RenderEntityEvent {
         if (!(entity instanceof EntityPlayer)) {
             return;
         }
+        OnlinePlayer player = this.coresAddon.getPlayerProvider().getOnlinePlayer(entity.getUniqueID());
+        if (player == null) {
+            return;
+        }
+
         boolean canRender = Minecraft.isGuiEnabled() && !entity.isInvisibleToPlayer(Minecraft.getMinecraft().thePlayer) && entity.riddenByEntity == null;
         if (!canRender) {
             return;
@@ -49,40 +55,49 @@ public class TagRenderListener implements RenderEntityEvent {
         double distance = entity.getDistanceSqToEntity(Minecraft.getMinecraft().getRenderManager().livingPlayer);
         float f = entity.isSneaking() ? 32.0F : 64.0F;
         if (distance < f * f) {
-            Collection<Tag> tags = this.tagProvider.getCachedTags(entity.getName());
-
-            if (tags == null || tags.isEmpty()) {
-                return;
-            }
+            Collection<Tag> tags = player.getCachedTags();
 
             int maxLineLength = 20;
 
             Collection<String> lines = new ArrayList<>();
-            StringBuilder builder = new StringBuilder();
-            tags.stream().map(Tag::getTag).forEach(tag -> {
-                if (builder.length() >= maxLineLength) {
-                    lines.add(builder.substring(0, builder.length() - 2));
-                    builder.setLength(0);
-                }
+            if (player.getLastStatistics() != null && player.getLastStatistics().hasRank()) {
+                lines.add("Rang: " + player.getLastStatistics().getRank());
+                lines.add("");
+            }
 
-                builder.append(tag).append(", ");
-            });
-            if (builder.length() > 0) {
-                lines.add(builder.substring(0, builder.length() - 2));
+            if (tags != null && !tags.isEmpty()) {
+                StringBuilder builder = new StringBuilder();
+                tags.stream().map(Tag::getTag).forEach(tag -> {
+                    if (builder.length() >= maxLineLength) {
+                        lines.add(builder.substring(0, builder.length() - 2));
+                        builder.setLength(0);
+                    }
+
+                    builder.append(tag).append(", ");
+                });
+                if (builder.length() > 0) {
+                    lines.add(builder.substring(0, builder.length() - 2));
+                }
+            }
+
+            if (lines.isEmpty()) {
+                return;
             }
 
             for (String line : lines) {
-                GlStateManager.pushMatrix();
-
-                y += 0.3;
-
                 double size = 1D;
-                GlStateManager.translate(0.0D, -0.2D + size / 8.0D, 0.0D);
+                if (!line.trim().isEmpty()) {
+                    GlStateManager.pushMatrix();
 
-                renderLivingLabelCustom(entity, line, x, y, z, 64, (float)size);
+                    y += 0.3;
 
-                y += size / 6.0D;
-                GlStateManager.popMatrix();
+                    GlStateManager.translate(0.0D, -0.2D + size / 8.0D, 0.0D);
+
+                    renderLivingLabelCustom(entity, line, x, y, z, 64, (float)size);
+                    GlStateManager.popMatrix();
+                }
+
+                y += size / 10.0D;
             }
         }
 

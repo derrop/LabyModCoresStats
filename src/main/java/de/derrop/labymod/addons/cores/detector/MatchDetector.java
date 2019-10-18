@@ -73,7 +73,7 @@ public class MatchDetector implements MessageReceiveEvent {
             if (possibleTeamPrefixes == null || possibleTeamPrefixes.isEmpty()) {
                 System.err.println("Failed to parse team \"" + winnerTeam + "\", language not supported!");
             } else {
-                winners = this.coresAddon.getScoreboardTagDetector().getPlayersWithPrefix(possibleTeamPrefixes::contains);
+                winners = this.coresAddon.getPlayersWithPrefix(possibleTeamPrefixes::contains);
                 System.out.println("Winners: " + winners + " [Team " + winnerTeam + "]");
             }
         }
@@ -101,7 +101,7 @@ public class MatchDetector implements MessageReceiveEvent {
         this.currentMatchGameType = null;
     }
 
-    public void removePlayerFromMatch(String player) { //todo bug: this is called when a player dies
+    public void removePlayerFromMatch(String player) { //todo bug: this is called when a player dies (should be fixed now)
         if (this.coresAddon.getCurrentServerId() == null || !this.inMatch) {
             return;
         }

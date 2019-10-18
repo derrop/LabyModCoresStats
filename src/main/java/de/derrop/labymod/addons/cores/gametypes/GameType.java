@@ -3,9 +3,13 @@ package de.derrop.labymod.addons.cores.gametypes;
  * Created by derrop on 28.09.2019
  */
 
+import com.mojang.authlib.GameProfile;
+import de.derrop.labymod.addons.cores.CoresAddon;
 import de.derrop.labymod.addons.cores.statistics.PlayerStatistics;
 import net.labymod.settings.elements.ControlElement;
 
+import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public abstract class GameType {
@@ -60,6 +64,14 @@ public abstract class GameType {
     public abstract String parseWinnerFromMessage(String message);
 
     public abstract String parseMapFromMessage(String message);
+
+    public abstract void getUUIDOfLeftPlayer(CoresAddon coresAddon, String message, Object packet, Consumer<UUID> resultHandler);
+
+    public abstract boolean usesPacketsToCheckPlayerLeave();
+
+    public abstract void getProfileOfJoinedPlayer(CoresAddon coresAddon, String message, Object packet, Consumer<GameProfile> resultHandler);
+
+    public abstract boolean usesPacketsToCheckPlayerJoin();
 
     @Override
     public String toString() {
