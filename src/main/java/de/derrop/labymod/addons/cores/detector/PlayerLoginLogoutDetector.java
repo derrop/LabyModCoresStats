@@ -88,7 +88,7 @@ public class PlayerLoginLogoutDetector implements Consumer<Object>, MessageRecei
         }
     }
 
-    private void initPlayer(GameProfile profile) {
+    private void initPlayer(GameProfile profile) { //todo tags are shown on match end
         if (this.onlinePlayers.containsKey(profile.getId())) {
             return;
         }

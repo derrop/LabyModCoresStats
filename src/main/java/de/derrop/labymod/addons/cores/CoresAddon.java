@@ -40,8 +40,6 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -56,7 +54,6 @@ public class CoresAddon extends LabyModAddon {
 
     private ServerDetector serverDetector = new ServerDetector(this);
     private MatchDetector matchDetector = new MatchDetector(this);
-    private PlayerLoginLogoutDetector playerLoginLogoutDetector;
     private PlayerDataProviders playerDataProviders;
 
     private Map<String, GameType> supportedGameTypes = new HashMap<>();
@@ -181,14 +178,14 @@ public class CoresAddon extends LabyModAddon {
             this.serverDetector.reset();
             this.display.setVisible(false);
 
+            this.lastRoundBeginTimestamp = -1;
+
             if (this.matchDetector.isInMatch()) {
                 this.matchDetector.handleMatchEnd(null);
             }
         });
 
         this.playerDataProviders = new PlayerDataProviders(this);
-
-        this.playerLoginLogoutDetector = new PlayerLoginLogoutDetector(this, this.playerDataProviders);
 
         this.syncClient.registerHandler((short) 1, new TagHandler(this));
 
@@ -218,7 +215,7 @@ public class CoresAddon extends LabyModAddon {
             this.matchDetector.handleMatchEnd(null);
         }
 
-        this.playerLoginLogoutDetector.reset();
+        this.playerDataProviders.reset();
 
         if (this.isCurrentServerTypeSupported()) {
             this.executorService.execute(() -> { //wait for the tablist packets to arrive
@@ -227,7 +224,7 @@ public class CoresAddon extends LabyModAddon {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                this.playerLoginLogoutDetector.handleServerSwitch();
+                this.playerDataProviders.handleServerSwitch();
             });
 
             if (this.config.externalDisplayEnabled) {

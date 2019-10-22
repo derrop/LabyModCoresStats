@@ -29,6 +29,14 @@ public class PlayerDataProviders {
         coresAddon.getApi().getEventManager().registerOnIncomingPacket(this.playerLoginLogoutDetector);
     }
 
+    public void reset() {
+        this.playerLoginLogoutDetector.reset();
+    }
+
+    public void handleServerSwitch() {
+        this.playerLoginLogoutDetector.handleServerSwitch();
+    }
+
     public TagProvider getTagProvider() {
         return tagProvider;
     }

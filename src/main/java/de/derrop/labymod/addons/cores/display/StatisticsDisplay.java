@@ -44,7 +44,7 @@ public class StatisticsDisplay extends JFrame {
     }
 
 
-    public void handleStatsUpdate(Collection<OnlinePlayer> onlinePlayers) {
+    public void handleStatsUpdate(Collection<OnlinePlayer> onlinePlayers) { //todo stats in BW not displayed properly, and pretty rare, but in CORES too
         this.lastOnlinePlayers = onlinePlayers;
         super.repaint();
     }
