@@ -88,9 +88,11 @@ public class MatchDetector implements MessageReceiveEvent {
                 payload.add("winners", winnersArray);
             }
             JsonArray players = new JsonArray();
-            for (NetworkPlayerInfo value : LabyModCore.getMinecraft().getConnection().getPlayerInfoMap()) {
-                if (value.getGameProfile() != null) {
-                    players.add(new JsonPrimitive(value.getGameProfile().getName()));
+            if (LabyModCore.getMinecraft().getConnection().getPlayerInfoMap() != null) {
+                for (NetworkPlayerInfo value : LabyModCore.getMinecraft().getConnection().getPlayerInfoMap()) {
+                    if (value.getGameProfile() != null) {
+                        players.add(new JsonPrimitive(value.getGameProfile().getName()));
+                    }
                 }
             }
             payload.add("players", players);
