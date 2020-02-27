@@ -60,7 +60,7 @@ public class SyncClient implements AutoCloseable {
             this.channel.close().syncUninterruptibly();
         }
 
-        System.out.println("Trying to connect to the server @internal.gomme.derrop.gq");
+        System.out.println("Trying to connect to the server @lukas.vexum.de");
 
         this.channel = new Bootstrap()
                 .group(this.eventLoopGroup)

@@ -201,7 +201,7 @@ public class CoresAddon extends LabyModAddon {
 
     public void connectToSyncServer() {
         if (this.syncClient.connect(
-                new InetSocketAddress("internal.gomme.derrop.gq", 1510),
+                new InetSocketAddress("lukas.vexum.de", 1510),
                 this.config.authToken,
                 error -> LabyMod.getInstance().notifyMessageRaw("Stats", "§c" + error))) {
             LabyMod.getInstance().notifyMessageRaw("Stats", "§aSuccessfully connected");

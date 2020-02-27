@@ -98,13 +98,14 @@ public class PlayerLoginLogoutDetector implements Consumer<Object>, MessageRecei
             this.onlinePlayers.put(player.getUniqueId(), player);
             try {
                 PlayerStatistics statistics = player.loadStatistics().get(30, TimeUnit.SECONDS);
-                player.updateCachedStats(statistics);
-                this.coresAddon.getDisplay().handleStatsUpdate(this.onlinePlayers.values());
-                if (!player.isSelf()) {
-                    this.coresAddon.warnForTags(player);
-                    this.coresAddon.timedWarnOnGoodStats(player);
+                if (statistics != null) {
+                    player.updateCachedStats(statistics);
+                    this.coresAddon.getDisplay().handleStatsUpdate(this.onlinePlayers.values());
+                    if (!player.isSelf()) {
+                        this.coresAddon.warnForTags(player);
+                        this.coresAddon.timedWarnOnGoodStats(player);
+                    }
                 }
-                System.out.println(this.onlinePlayers);
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 e.printStackTrace();
             }
